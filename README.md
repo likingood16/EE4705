@@ -99,6 +99,18 @@ ros2 topic hz /camera/image_raw
 ros2 run rqt_image_view rqt_image_view
 ```
 
+After Gazebo is running, verify all essential robot data with:
+
+```bash
+cd ~/EE4705/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+ros2 run ee4705_bringup system_check
+```
+
+The check passes only when camera, laser, and odometry messages are received. See
+`docs/setup_notes/task1_smoke_test.md` for troubleshooting steps.
+
 ## Group Git workflow
 
 Do not develop directly on `main`. Create a short-lived branch for one feature:
