@@ -1,0 +1,1 @@
+trial_id,scene_id,image_path,model,question,expected_objects,reported_objects,correct_objects,missed_objects,hallucinated_objects,latency_s,cost_usd,notes

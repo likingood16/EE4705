@@ -1,0 +1,1 @@
+trial_id,user_command,target_room,target_object,parsing_success,navigation_success,description_success,approach_success,end_to_end_success,parsing_latency_s,navigation_latency_s,description_latency_s,approach_latency_s,total_cost_usd,failure_reason,notes

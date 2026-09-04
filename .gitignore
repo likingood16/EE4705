@@ -1,0 +1,39 @@
+# ROS2 / colcon
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+.venv/
+venv/
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.key
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated logs and large recordings
+*.log
+*.bag
+*.db3
+*.mcap
+demo/*.mp4
+demo/*.mov
+demo/*.mkv
+
+# Temporary files
+*.tmp
+*.swp
+*~
