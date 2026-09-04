@@ -1,0 +1,22 @@
+# Example only. Replace every pose using coordinates measured from the group's map.
+rooms:
+  1:
+    name: room_1
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+  2:
+    name: room_2
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+  3:
+    name: room_3
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+  4:
+    name: room_4
+    x: 0.0
+    y: 0.0
+    yaw: 0.0

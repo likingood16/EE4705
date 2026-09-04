@@ -1,0 +1,1 @@
+trial_id,utterance,expected_action,expected_target,predicted_action,predicted_target,correct,latency_s,failure_reason,notes
