@@ -6,7 +6,11 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
 fi
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ROS_SETUP="/opt/ros/humble/setup.bash"
+VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
+
+# shellcheck disable=SC1090
+source "$VERSIONS_FILE"
+ROS_SETUP="/opt/ros/$ROS_DISTRO/setup.bash"
 VENV_ACTIVATE="$PROJECT_ROOT/.venv/bin/activate"
 
 if [[ ! -f "$ROS_SETUP" ]]; then
@@ -24,7 +28,7 @@ source "$ROS_SETUP"
 # shellcheck disable=SC1090
 source "$VENV_ACTIVATE"
 
-export TURTLEBOT3_MODEL=waffle_pi
+export TURTLEBOT3_MODEL
 
 if [[ -f "$PROJECT_ROOT/ros2_ws/install/setup.bash" ]]; then
   # shellcheck disable=SC1091
@@ -33,4 +37,3 @@ fi
 
 cd "$PROJECT_ROOT" || return 1
 echo "EE4705 environment active: ROS=$ROS_DISTRO, robot=$TURTLEBOT3_MODEL, Python=$(python --version 2>&1)"
-
