@@ -63,12 +63,20 @@ git clone https://github.com/likingood16/EE4705.git
 cd EE4705
 ```
 
-Source ROS2 and select the camera-equipped robot:
+Install the shared dependencies once:
 
 ```bash
-source /opt/ros/humble/setup.bash
-export TURTLEBOT3_MODEL=waffle_pi
+bash scripts/install_dependencies_ubuntu.sh
 ```
+
+For every new terminal, activate the project environment:
+
+```bash
+source scripts/activate_ubuntu.sh
+```
+
+Do not copy or commit `.venv`. GitHub stores the dependency recipe, and each
+member creates their own local environment from it. See `environment/README.md`.
 
 After ROS2 packages are added, build the workspace with:
 
