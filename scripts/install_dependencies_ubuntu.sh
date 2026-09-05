@@ -2,7 +2,11 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ROS_SETUP="/opt/ros/humble/setup.bash"
+VERSIONS_FILE="$PROJECT_ROOT/environment/versions.env"
+
+# shellcheck disable=SC1090
+source "$VERSIONS_FILE"
+ROS_SETUP="/opt/ros/$ROS_DISTRO/setup.bash"
 
 if [[ ! -f /etc/os-release ]]; then
   echo "Cannot identify this operating system. Use Ubuntu 22.04."
@@ -11,8 +15,8 @@ fi
 
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "22.04" ]]; then
-  echo "This project expects Ubuntu 22.04; detected ${PRETTY_NAME:-unknown}."
+if [[ "${ID:-}" != "ubuntu" || "${VERSION_ID:-}" != "$UBUNTU_VERSION" ]]; then
+  echo "This project expects Ubuntu $UBUNTU_VERSION; detected ${PRETTY_NAME:-unknown}."
   exit 1
 fi
 
@@ -31,15 +35,15 @@ sudo apt-get install -y \
   python3-venv \
   python3-colcon-common-extensions \
   python3-rosdep \
-  ros-humble-cv-bridge \
-  ros-humble-gazebo-ros-pkgs \
-  ros-humble-nav2-bringup \
-  ros-humble-nav2-simple-commander \
-  ros-humble-rqt-image-view \
-  ros-humble-turtlebot3-cartographer \
-  ros-humble-turtlebot3-gazebo \
-  ros-humble-turtlebot3-navigation2 \
-  ros-humble-turtlebot3-teleop
+  "ros-$ROS_DISTRO-cv-bridge" \
+  "ros-$ROS_DISTRO-gazebo-ros-pkgs" \
+  "ros-$ROS_DISTRO-nav2-bringup" \
+  "ros-$ROS_DISTRO-nav2-simple-commander" \
+  "ros-$ROS_DISTRO-rqt-image-view" \
+  "ros-$ROS_DISTRO-turtlebot3-cartographer" \
+  "ros-$ROS_DISTRO-turtlebot3-gazebo" \
+  "ros-$ROS_DISTRO-turtlebot3-navigation2" \
+  "ros-$ROS_DISTRO-turtlebot3-teleop"
 
 if [[ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]]; then
   sudo rosdep init
@@ -55,10 +59,9 @@ python -m pip install -r "$PROJECT_ROOT/requirements.txt"
 rosdep install \
   --from-paths "$PROJECT_ROOT/ros2_ws/src" \
   --ignore-src \
-  --rosdistro humble \
+  --rosdistro "$ROS_DISTRO" \
   -r -y
 
 echo
 echo "Environment installed successfully."
 echo "For every new terminal, run: source scripts/activate_ubuntu.sh"
-

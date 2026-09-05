@@ -1,0 +1,44 @@
+name: Quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use project Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Check Python syntax
+        run: python -m compileall -q ros2_ws/src
+
+      - name: Run offline perception tests
+        env:
+          PYTHONPATH: ros2_ws/src/ee4705_perception
+        run: python -m unittest discover -s ros2_ws/src/ee4705_perception/test -v
+
+      - name: Validate ROS package XML
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          package_files = list(Path("ros2_ws/src").rglob("package.xml"))
+          if not package_files:
+              raise SystemExit("No package.xml files found")
+          for package_file in package_files:
+              ET.parse(package_file)
+              print(f"XML OK: {package_file}")
+          PY
+
+      - name: Check shell-script syntax
+        run: bash -n scripts/install_dependencies_ubuntu.sh scripts/activate_ubuntu.sh

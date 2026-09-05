@@ -1,4 +1,3 @@
 # Python dependencies shared by every group member.
 # ROS2 Python packages are installed through apt/rosdep, not pip.
 openai>=1.0,<3.0
-

@@ -13,7 +13,7 @@ setup(
         ("share/" + package_name, ["package.xml"]),
     ],
     install_requires=["setuptools"],
-    extras_require={"api": ["openai>=1.0"]},
+    extras_require={"api": ["openai>=1.0,<3.0"]},
     zip_safe=True,
     maintainer="EE4705 Project Team",
     maintainer_email="replace-with-team-email@example.com",

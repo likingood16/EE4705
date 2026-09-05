@@ -58,4 +58,3 @@ source scripts/activate_ubuntu.sh
 
 Make dependency changes on a feature branch and open a pull request so another
 member can review them before they reach `main`.
-
