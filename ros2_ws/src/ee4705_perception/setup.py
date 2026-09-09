@@ -22,6 +22,7 @@ setup(
     entry_points={
         "console_scripts": [
             "vision_demo = ee4705_perception.cli:main",
+            "goto_room = ee4705_perception.goto_room:main",
         ],
     },
 )
