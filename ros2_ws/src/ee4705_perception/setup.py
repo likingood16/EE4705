@@ -23,6 +23,7 @@ setup(
         "console_scripts": [
             "vision_demo = ee4705_perception.cli:main",
             "goto_room = ee4705_perception.goto_room:main",
+            "terminal_chat = ee4705_perception.terminal_chat:main",
         ],
     },
 )
