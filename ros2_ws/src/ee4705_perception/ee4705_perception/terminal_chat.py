@@ -1,24 +1,60 @@
-import os
-import json
-import time
 import csv
+import json
+import os
+import time
 from datetime import datetime
+from pathlib import Path
 
 import rclpy
 
 from google import genai
 from google.genai import types
 
+from ee4705_perception.camera_snapshot import capture_one_frame
 from ee4705_perception.goto_room import GotoRoom
+from ee4705_perception.scene_describer import SceneDescriber
+from ee4705_perception.vlm_client import GeminiVLMClient
 
 
 # ============================================================
-# GEMINI CONFIGURATION
+# PORTABLE PROJECT PATHS
+# ============================================================
+
+PROJECT_ROOT = Path(
+    os.environ.get(
+        "EE4705_ROOT",
+        Path(__file__).resolve().parents[4],
+    )
+)
+
+CURRENT_CAMERA_IMAGE = (
+    PROJECT_ROOT
+    / "evaluation"
+    / "scenes"
+    / "current_camera.jpg"
+)
+
+LOG_DIR = PROJECT_ROOT / "logs"
+LOG_FILE = LOG_DIR / "terminal_chat_log.csv"
+
+LOG_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+CURRENT_CAMERA_IMAGE.parent.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+
+# ============================================================
+# GEMINI COMMAND-PARSER CONFIGURATION
 # ============================================================
 
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
-    "gemini-3.5-flash-lite"
+    "gemini-3.5-flash-lite",
 )
 
 client = genai.Client(
@@ -26,6 +62,45 @@ client = genai.Client(
 )
 
 
+# ============================================================
+# VISION MODEL
+# ============================================================
+
+vision_describer = None
+
+
+def get_vision_describer():
+    """Create the vision client only when vision is requested."""
+
+    global vision_describer
+
+    if vision_describer is None:
+        vision_describer = SceneDescriber(
+            GeminiVLMClient()
+        )
+
+    return vision_describer
+
+
+def ask_current_view(question=None):
+    """Capture the latest frame and send it to Gemini."""
+
+    saved_image = capture_one_frame(
+        CURRENT_CAMERA_IMAGE,
+        timeout_s=10.0,
+    )
+
+    describer = get_vision_describer()
+
+    if question:
+        return describer.answer(
+            saved_image,
+            question,
+        )
+
+    return describer.describe(
+        saved_image
+    )
 # ============================================================
 # SYSTEM PROMPT
 # ============================================================
@@ -54,13 +129,31 @@ Understand natural paraphrases such as:
 2. Describe the current scene:
 {"action": "describe"}
 
-3. Approach an object:
+Use this when the user requests a general description, such as:
+- "Describe what you can see"
+- "What is around you?"
+- "Look around and describe the room"
+
+3. Answer a visual question:
+{"action": "visual_question", "question": "Is there anything on the floor?"}
+
+Use this when the user asks a specific question about the
+current camera view, including follow-up questions such as:
+- "What colour is the wall?"
+- "Is there anything on the floor?"
+- "Can you see a fire hydrant?"
+- "What is on the left?"
+- "What colour is it?"
+
+Copy the user's visual question into the "question" field.
+
+4. Approach an object:
 {"action": "approach", "object": "cup"}
 
-4. Stop:
+5. Stop:
 {"action": "stop"}
 
-5. General conversation or clarification:
+6. General conversation or clarification:
 {"action": "chat", "reply": "your response"}
 
 If the user requests an invalid room such as Room 99,
@@ -130,25 +223,6 @@ Use the conversation history to interpret follow-up requests.
 # ============================================================
 
 history = []
-
-
-# ============================================================
-# CSV LOGGING
-# ============================================================
-
-LOG_DIR = os.path.expanduser(
-    "~/EE4705/logs"
-)
-
-LOG_FILE = os.path.join(
-    LOG_DIR,
-    "terminal_chat_log.csv"
-)
-
-os.makedirs(
-    LOG_DIR,
-    exist_ok=True
-)
 
 
 def log_interaction(
@@ -447,6 +521,8 @@ def main():
 
 
         navigation_success = None
+        vision_model = None
+        vision_latency = None
 
 
         # ------------------------------------------
@@ -508,14 +584,95 @@ def main():
         # Task 3 integration later
         # ------------------------------------------
 
+        # ------------------------------------------
+        # DESCRIBE CURRENT CAMERA VIEW
+        # ------------------------------------------
+
         elif action == "describe":
 
-            reply = (
-                "Scene description is not "
-                "connected yet. This capability "
-                "will be handled by the vision module."
+            try:
+
+                print(
+                    "Robot: Capturing the current "
+                    "camera view..."
+                )
+
+                vision_response = ask_current_view()
+
+                reply = (
+                    vision_response.text
+                    or
+                    "The vision model returned "
+                    "an empty description."
+                )
+
+                vision_model = (
+                    vision_response.model
+                )
+
+                vision_latency = (
+                    vision_response.latency_s
+                )
+
+            except Exception as error:
+
+                print(
+                    f"[Vision error: {error}]"
+                )
+
+                reply = (
+                    "Sorry, I could not describe "
+                    "the current camera view."
+                )
+
+
+        # ------------------------------------------
+        # VISUAL QUESTION
+        # ------------------------------------------
+
+        elif action == "visual_question":
+
+            question = command.get(
+                "question",
+                user_text,
             )
 
+            try:
+
+                print(
+                    "Robot: Checking the current "
+                    "camera view..."
+                )
+
+                vision_response = ask_current_view(
+                    question
+                )
+
+                reply = (
+                    vision_response.text
+                    or
+                    "The vision model returned "
+                    "an empty answer."
+                )
+
+                vision_model = (
+                    vision_response.model
+                )
+
+                vision_latency = (
+                    vision_response.latency_s
+                )
+
+            except Exception as error:
+
+                print(
+                    f"[Vision error: {error}]"
+                )
+
+                reply = (
+                    "Sorry, I could not answer "
+                    "that visual question."
+                )
 
         # ------------------------------------------
         # APPROACH
@@ -575,6 +732,10 @@ def main():
             )
 
 
+                # ------------------------------------------
+        # DISPLAY FINAL RESPONSE AND TIMING
+        # ------------------------------------------
+
         print(
             f"Robot: {reply}"
         )
@@ -584,8 +745,21 @@ def main():
             f"{latency:.2f} s]"
         )
 
-        print("")
+        if vision_model is not None:
 
+            print(
+                f"[Vision model: "
+                f"{vision_model}]"
+            )
+
+        if vision_latency is not None:
+
+            print(
+                f"[Vision latency: "
+                f"{vision_latency:.2f} s]"
+            )
+
+        print("")
 
         # ------------------------------------------
         # LOG INTERACTION
@@ -612,7 +786,8 @@ def main():
         })
 
 
-    rclpy.shutdown()
+    if rclpy.ok():
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":

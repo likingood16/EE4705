@@ -37,3 +37,10 @@ demo/*.mkv
 *.tmp
 *.swp
 *~
+
+# Runtime terminal logs
+/logs/
+
+# Temporary camera frames
+/evaluation/scenes/current_camera.jpg
+/evaluation/scenes/integration_camera_test.jpg
