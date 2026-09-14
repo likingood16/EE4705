@@ -1,7 +1,7 @@
 """Capture one image from the TurtleBot3 camera."""
 
 from __future__ import annotations
-
+import argparse
 import os
 import time
 from pathlib import Path
@@ -108,7 +108,33 @@ def capture_one_frame(
 
 
 def main() -> int:
-    """Standalone command that captures one frame."""
+    """Capture one frame using a selectable output filename."""
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Capture one image from "
+            "/camera/image_raw."
+        )
+    )
+
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help=(
+            "Output image path. Relative paths are "
+            "resolved from the EE4705 project root."
+        ),
+    )
+
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=10.0,
+        help="Maximum seconds to wait for a camera frame.",
+    )
+
+    arguments = parser.parse_args()
 
     project_root = Path(
         os.environ.get(
@@ -117,27 +143,47 @@ def main() -> int:
         )
     )
 
-    output_path = (
-        project_root
-        / "evaluation"
-        / "scenes"
-        / "current_camera.jpg"
-    )
+    if arguments.output is None:
+        output_path = (
+            project_root
+            / "evaluation"
+            / "scenes"
+            / "current_camera.jpg"
+        )
+
+    elif arguments.output.is_absolute():
+        output_path = arguments.output
+
+    else:
+        output_path = (
+            project_root
+            / arguments.output
+        )
 
     rclpy.init()
 
     try:
-        capture_one_frame(output_path)
+        saved_path = capture_one_frame(
+            output_path,
+            timeout_s=arguments.timeout,
+        )
+
+        print(
+            f"Camera snapshot saved: {saved_path}"
+        )
+
         return 0
 
     except Exception as error:
-        print(f"Camera capture failed: {error}")
+        print(
+            f"Camera capture failed: {error}"
+        )
+
         return 1
 
     finally:
         if rclpy.ok():
             rclpy.shutdown()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
