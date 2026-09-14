@@ -2,10 +2,11 @@ import sys
 import math
 import yaml
 import rclpy
+import os
 
 from rclpy.node import Node
 from rclpy.action import ActionClient
-
+from pathlib import Path
 from nav2_msgs.action import NavigateToPose
 
 
@@ -31,8 +32,14 @@ class GotoRoom(Node):
 
 
     def send_goal(self):
+        project_root = Path(
+            os.environ.get(
+                'EE4705_ROOT',
+                Path(__file__).resolve().parents[4]
+            )
+        )
+        yaml_path = project_root / 'config' / 'room_waypoints.yaml'
 
-        yaml_path = '/home/charanprogram/EE4705/config/room_waypoints.yaml'
 
         try:
             with open(yaml_path, 'r') as file:

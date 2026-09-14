@@ -28,7 +28,8 @@ source "$ROS_SETUP"
 # shellcheck disable=SC1090
 source "$VENV_ACTIVATE"
 
-export TURTLEBOT3_MODEL
+export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-waffle_pi}"
+export EE4705_ROOT="$PROJECT_ROOT"
 
 if [[ -f "$PROJECT_ROOT/ros2_ws/install/setup.bash" ]]; then
   # shellcheck disable=SC1091
