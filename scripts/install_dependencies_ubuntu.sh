@@ -26,8 +26,12 @@ if [[ ! -f "$ROS_SETUP" ]]; then
   exit 1
 fi
 
+# ROS setup scripts may read optional variables that are not defined.
+# Temporarily disable nounset while loading ROS, then enable it again.
+set +u
 # shellcheck disable=SC1090
 source "$ROS_SETUP"
+set -u
 
 sudo apt-get update
 sudo apt-get install -y \
