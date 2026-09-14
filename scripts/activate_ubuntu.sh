@@ -30,6 +30,13 @@ source "$VENV_ACTIVATE"
 
 export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-waffle_pi}"
 export EE4705_ROOT="$PROJECT_ROOT"
+ENV_FILE="$PROJECT_ROOT/.env"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
 
 if [[ -f "$PROJECT_ROOT/ros2_ws/install/setup.bash" ]]; then
   # shellcheck disable=SC1091
