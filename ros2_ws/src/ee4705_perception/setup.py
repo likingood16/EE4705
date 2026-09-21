@@ -25,6 +25,7 @@ setup(
             "camera_snapshot = ee4705_perception.camera_snapshot:main",
             "goto_room = ee4705_perception.goto_room:main",
             "terminal_chat = ee4705_perception.terminal_chat:main",
+            "approach_robot = ee4705_perception.approach_robot:main",
         ],
     },
 )
