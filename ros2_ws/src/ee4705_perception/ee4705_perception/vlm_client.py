@@ -65,6 +65,104 @@ class MockVLMClient:
             latency_s=time.perf_counter() - started,
         )
 
+class GeminiVLMClient:
+    """Client for sending saved images to Google Gemini."""
+
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        api_key_env: str = "GEMINI_API_KEY",
+    ) -> None:
+        api_key = os.getenv(api_key_env)
+
+        if not api_key:
+            raise ValueError(
+                f"Environment variable {api_key_env} is not set. "
+                "Store the key in the ignored .env file."
+            )
+
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError as error:
+            raise RuntimeError(
+                "The google-genai package is missing. "
+                "Install the dependencies from requirements.txt."
+            ) from error
+
+        self._client = genai.Client(api_key=api_key)
+        self._types = types
+
+        self.model = (
+            model
+            or os.getenv("GEMINI_VISION_MODEL")
+            or os.getenv("GEMINI_MODEL")
+            or "gemini-3.5-flash-lite"
+        )
+
+
+    def ask(
+        self,
+        image_path: str | Path,
+        prompt: str,
+    ) -> VLMResponse:
+        """Send one image and prompt to Gemini."""
+
+        path = Path(image_path)
+
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"Image does not exist: {path}"
+            )
+
+        mime_type, _ = mimetypes.guess_type(path.name)
+
+        if mime_type not in {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        }:
+            raise ValueError(
+                "Use a JPEG, PNG, or WebP image."
+            )
+
+        image_part = self._types.Part.from_bytes(
+            data=path.read_bytes(),
+            mime_type=mime_type,
+        )
+
+        started = time.perf_counter()
+
+        response = self._client.models.generate_content(
+            model=self.model,
+            contents=[
+                prompt,
+                image_part,
+            ],
+            config=self._types.GenerateContentConfig(
+                temperature=0,
+            ),
+        )
+
+        latency_s = time.perf_counter() - started
+        usage = getattr(response, "usage_metadata", None)
+
+        return VLMResponse(
+            text=(getattr(response, "text", "") or "").strip(),
+            model=self.model,
+            latency_s=latency_s,
+            input_tokens=getattr(
+                usage,
+                "prompt_token_count",
+                None,
+            ),
+            output_tokens=getattr(
+                usage,
+                "candidates_token_count",
+                None,
+            ),
+        )
 
 class OpenAICompatibleVLMClient:
     """Client for services exposing an OpenAI-compatible chat endpoint."""
