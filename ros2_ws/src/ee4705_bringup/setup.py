@@ -23,6 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "system_check = ee4705_bringup.system_check:main",
+            "initial_pose_setter = ee4705_bringup.initial_pose_setter:main",
         ],
     },
 )
