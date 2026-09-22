@@ -13,7 +13,10 @@ from google.genai import types
 from ee4705_perception.camera_snapshot import capture_one_frame
 from ee4705_perception.goto_room import GotoRoom
 from ee4705_perception.scene_describer import SceneDescriber
-from ee4705_perception.vlm_client import GeminiVLMClient
+from ee4705_perception.vlm_client import (
+    GeminiVLMClient,
+    QwenVLMClient,
+)
 
 
 # ============================================================
@@ -70,20 +73,33 @@ vision_describer = None
 
 
 def get_vision_describer():
-    """Create the vision client only when vision is requested."""
+    """Create the selected vision client only when requested."""
 
     global vision_describer
 
     if vision_describer is None:
+        provider = os.getenv(
+            "VISION_PROVIDER",
+            "gemini",
+        ).strip().lower()
+
+        if provider == "gemini":
+            vision_client = GeminiVLMClient()
+        elif provider == "qwen":
+            vision_client = QwenVLMClient()
+        else:
+            raise ValueError(
+                "VISION_PROVIDER must be "
+                "'gemini' or 'qwen'."
+            )
+
         vision_describer = SceneDescriber(
-            GeminiVLMClient()
+            vision_client
         )
 
     return vision_describer
-
-
 def ask_current_view(question=None):
-    """Capture the latest frame and send it to Gemini."""
+    """Capture the latest frame and send it to the selected vision client."""
 
     saved_image = capture_one_frame(
         CURRENT_CAMERA_IMAGE,
