@@ -4278,60 +4278,6 @@
         </collision>
         <enable_wind>0</enable_wind>
       </link>
-      <model name='turtlebot3_house::Mailbox'>
-        <link name='link'>
-          <collision name='collision'>
-            <geometry>
-              <mesh>
-                <uri>model://mailbox/meshes/mailbox.dae</uri>
-              </mesh>
-            </geometry>
-            <max_contacts>10</max_contacts>
-            <surface>
-              <contact>
-                <ode/>
-              </contact>
-              <bounce/>
-              <friction>
-                <torsional>
-                  <ode/>
-                </torsional>
-                <ode/>
-              </friction>
-            </surface>
-          </collision>
-          <visual name='visual'>
-            <geometry>
-              <mesh>
-                <uri>model://mailbox/meshes/mailbox.dae</uri>
-              </mesh>
-            </geometry>
-            <material>
-              <script>
-                <uri>model://mailbox/materials/scripts</uri>
-                <uri>model://mailbox/materials/textures</uri>
-                <name>Mailbox/Diffuse</name>
-              </script>
-            </material>
-          </visual>
-          <self_collide>0</self_collide>
-          <inertial>
-            <pose>0 0 0 0 -0 0</pose>
-            <inertia>
-              <ixx>1</ixx>
-              <ixy>0</ixy>
-              <ixz>0</ixz>
-              <iyy>1</iyy>
-              <iyz>0</iyz>
-              <izz>1</izz>
-            </inertia>
-            <mass>1</mass>
-          </inertial>
-          <enable_wind>0</enable_wind>
-          <kinematic>0</kinematic>
-        </link>
-        <pose relative_to='turtlebot3_house::__model__'>0.883462 -0.576236 0 0 0 -3.14159</pose>
-      </model>
       <model name='turtlebot3_house::bookshelf'>
         <static>1</static>
         <link name='link'>
@@ -9602,16 +9548,6 @@
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
         </link>
-        <model name='turtlebot3_house::Mailbox'>
-          <pose>0.883462 -0.576236 0 0 0 -3.14159</pose>
-          <scale>1 1 1</scale>
-          <link name='link'>
-            <pose>0.883462 -0.576236 -1e-05 2e-06 -3e-06 -3.14159</pose>
-            <velocity>0 0 0 0 -0 0</velocity>
-            <acceleration>0 0 -9.8 0 -0 0</acceleration>
-            <wrench>0 0 -9.8 0 -0 0</wrench>
-          </link>
-        </model>
         <model name='turtlebot3_house::bookshelf'>
           <pose>-6.54397 5.19486 0 0 -0 0</pose>
           <scale>1 1 1</scale>
