@@ -35,7 +35,7 @@ source "$WORKSPACE_SETUP"
 echo "Starting the complete EE4705 simulation..."
 echo "World: $PROJECT_ROOT/worlds/house_with_objects.world"
 echo "Map:   $PROJECT_ROOT/maps/house_map_final.yaml"
-echo "Pose:  x=0.0, y=0.0, yaw=0.0"
+echo "Pose:  x=0.0, y=-0.05, yaw=0.0"
 echo
 echo "Press Ctrl+C to stop the complete system."
 

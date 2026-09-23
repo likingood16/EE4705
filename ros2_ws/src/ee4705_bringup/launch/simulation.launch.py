@@ -141,7 +141,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument(
                 "initial_y",
-                default_value="0.0",
+                default_value="-0.05",
                 description="Initial robot y coordinate in the map frame.",
             ),
             DeclareLaunchArgument(

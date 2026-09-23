@@ -21,6 +21,10 @@ class InitialPoseSetter(Node):
         self.declare_parameter("y", 0.0)
         self.declare_parameter("yaw", 0.0)
         self.declare_parameter("frame_id", "map")
+        # The spawn pose is known exactly, so start AMCL with a tight
+        # particle cloud (about 5 cm and 3 degrees standard deviation).
+        self.declare_parameter("xy_variance", 0.0025)
+        self.declare_parameter("yaw_variance", 0.0027)
 
         self.amcl_state_client = self.create_client(
             GetState,
@@ -87,6 +91,8 @@ class InitialPoseSetter(Node):
         y = float(self.get_parameter("y").value)
         yaw = float(self.get_parameter("yaw").value)
         frame_id = str(self.get_parameter("frame_id").value)
+        xy_variance = float(self.get_parameter("xy_variance").value)
+        yaw_variance = float(self.get_parameter("yaw_variance").value)
 
         request = SetInitialPose.Request()
         request.pose.header.stamp = self.get_clock().now().to_msg()
@@ -100,11 +106,11 @@ class InitialPoseSetter(Node):
         request.pose.pose.pose.orientation.w = math.cos(yaw / 2.0)
 
         # Position uncertainty in x and y.
-        request.pose.pose.covariance[0] = 0.25
-        request.pose.pose.covariance[7] = 0.25
+        request.pose.pose.covariance[0] = xy_variance
+        request.pose.pose.covariance[7] = xy_variance
 
         # Orientation uncertainty around the vertical axis.
-        request.pose.pose.covariance[35] = 0.0685
+        request.pose.pose.covariance[35] = yaw_variance
 
         self.get_logger().info(
             f"Setting initial pose: x={x:.3f}, "
