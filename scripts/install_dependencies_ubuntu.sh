@@ -26,8 +26,11 @@ if [[ ! -f "$ROS_SETUP" ]]; then
   exit 1
 fi
 
+# ROS setup scripts reference unset variables, so relax nounset while sourcing.
+set +u
 # shellcheck disable=SC1090
 source "$ROS_SETUP"
+set -u
 
 sudo apt-get update
 sudo apt-get install -y \
@@ -51,8 +54,10 @@ fi
 rosdep update
 
 python3 -m venv --system-site-packages "$PROJECT_ROOT/.venv"
+set +u
 # shellcheck disable=SC1091
 source "$PROJECT_ROOT/.venv/bin/activate"
+set -u
 python -m pip install --upgrade pip
 python -m pip install -r "$PROJECT_ROOT/requirements.txt"
 
