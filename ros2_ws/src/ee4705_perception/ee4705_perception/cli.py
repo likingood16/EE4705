@@ -11,6 +11,7 @@ from .vlm_client import (
     GeminiVLMClient,
     MockVLMClient,
     OpenAICompatibleVLMClient,
+    QwenVLMClient,
 )
 
 
@@ -40,11 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[
             "mock",
             "gemini",
+            "qwen",
             "openai-compatible",
         ],
         default="mock",
         help=(
-            "Choose the mock client, Gemini, "
+            "Choose the mock client, Gemini,Qwen, "
             "or an OpenAI-compatible service"
         ),
     )
@@ -98,6 +100,12 @@ def make_client(arguments: argparse.Namespace):
 
     if arguments.provider == "gemini":
         return GeminiVLMClient(arguments.model)
+
+    if arguments.provider == "qwen":
+        return QwenVLMClient(
+            arguments.model,
+            base_url=arguments.base_url,
+        )
 
     if not arguments.model:
         raise ValueError(

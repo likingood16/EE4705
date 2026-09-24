@@ -229,3 +229,39 @@ class OpenAICompatibleVLMClient:
             input_tokens=getattr(usage, "prompt_tokens", None),
             output_tokens=getattr(usage, "completion_tokens", None),
         )
+class QwenVLMClient(OpenAICompatibleVLMClient):
+    """Qwen vision client using Alibaba's OpenAI-compatible API."""
+
+    DEFAULT_MODEL = "qwen3-vl-plus"
+    DEFAULT_BASE_URL = (
+        "https://dashscope-intl.aliyuncs.com/"
+        "compatible-mode/v1"
+    )
+
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        api_key_env: str = "QWEN_API_KEY",
+        base_url: str | None = None,
+    ) -> None:
+        """Configure Qwen from environment variables or explicit values."""
+
+        selected_model = (
+            model
+            or os.getenv("QWEN_MODEL")
+            or self.DEFAULT_MODEL
+        )
+
+        selected_base_url = (
+            base_url
+            or os.getenv("QWEN_BASE_URL")
+            or self.DEFAULT_BASE_URL
+        )
+
+        super().__init__(
+            selected_model,
+            api_key_env=api_key_env,
+            base_url=selected_base_url,
+            image_detail=None,
+        )

@@ -1,27 +1,27 @@
-# Task 3 vision work
+# Task 3: VLM scene understanding
 
-## First milestone
+## Scope
 
-Run one saved JPEG through `vision_demo` in mock mode, then through one real VLM.
-Do not begin with the ROS2 camera connection.
+Task 3 connects the TurtleBot3 camera to a vision-language model (VLM) so the robot can:
 
-## Final Task 3 requirements
+1. Describe its current camera view.
+2. Answer follow-up questions about the same view.
+3. Compare two real VLM services using identical images and prompts.
+4. Record accuracy, hallucinations, latency, token usage, and estimated cost.
 
-1. Describe the robot's current view concisely.
-2. Answer follow-up visual questions about the current view.
-3. Compare at least two VLM services on at least ten Gazebo scenes.
-4. Record correct, missed, and hallucinated objects, latency, and cost.
-5. Explain which model was selected for the integrated system and why.
+## Implemented providers
 
-## Evaluation procedure
+The perception package supports:
 
-For every final scene:
+- Google Gemini
+- Alibaba Qwen
+- Generic OpenAI-compatible services
+- An offline mock provider for testing without API usage
 
-1. Save the source camera image with a stable name such as `room01_view01.jpg`.
-2. Write the ground-truth visible objects before reading either model response.
-3. Use the same prompt and image for both models.
-4. Save both raw responses and latency values.
-5. Manually score correct, missed, and hallucinated objects.
-6. Add notes explaining ambiguous objects or model failures.
+The default models are configured in the local `.env` file:
 
-Use `evaluation/vlm_scene_trials.csv` as the shared results table.
+```dotenv
+GEMINI_MODEL=gemini-3.5-flash-lite
+QWEN_MODEL=qwen3-vl-plus
+QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+VISION_PROVIDER=gemini
