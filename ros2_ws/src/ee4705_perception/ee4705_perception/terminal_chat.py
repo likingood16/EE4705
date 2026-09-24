@@ -78,9 +78,11 @@ CURRENT_CAMERA_IMAGE.parent.mkdir(
 # COMMAND-PARSER CONFIGURATION
 # ============================================================
 
-# Gemini is the parser evaluated in Task 2. When the primary parser fails
-# (Gemini returned frequent 503/504 overload errors during testing), the same
-# prompt is sent to the other provider so a turn is not lost.
+# Both parsers scored 20/20 on the Task 2 utterances (Gemini 0.73 s, Qwen
+# 0.74 s mean), but on the evaluation days Gemini took 20-40 s per call and
+# returned 503/504 overload errors, so Qwen is the default (see
+# docs/results_summary.md). When the primary parser fails, the same prompt is
+# sent to the other provider so a turn is not lost.
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
     "gemini-3.5-flash-lite",
@@ -92,7 +94,7 @@ QWEN_PARSER_MODEL = os.getenv(
 )
 
 # Primary parser ("gemini" or "qwen"); the other one is the fallback.
-PARSER_PROVIDER = os.getenv("PARSER_PROVIDER", "gemini").strip().lower()
+PARSER_PROVIDER = os.getenv("PARSER_PROVIDER", "qwen").strip().lower()
 
 PARSER_FALLBACK = os.getenv("PARSER_FALLBACK", "1") == "1"
 
@@ -137,8 +139,10 @@ def get_vision_describer():
     global vision_describer
 
     if vision_describer is None:
+        # Qwen: 10x lower latency than Gemini in the Task 3 comparison, no
+        # failed calls, same hallucination count (Gemini named more objects).
         vision_describer = SceneDescriber(
-            make_vlm_client(os.getenv("VISION_PROVIDER", "gemini"))
+            make_vlm_client(os.getenv("VISION_PROVIDER", "qwen"))
         )
 
     return vision_describer

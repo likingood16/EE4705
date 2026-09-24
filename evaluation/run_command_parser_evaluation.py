@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_SOURCE = PROJECT_ROOT / "ros2_ws/src/ee4705_perception"
 sys.path.insert(0, str(PACKAGE_SOURCE))
 
-from ee4705_perception.terminal_chat import parse_command
+from ee4705_perception.terminal_chat import PARSER_PROVIDER, parse_command
 
 TRIALS = [
     ("direct", "Go to Room 1.", "goto_room", "1"),
@@ -63,7 +63,12 @@ def evaluate_match(command, expected_action, expected_argument):
 def main():
     """Run all trials, grade them and save the results."""
     output_path = (
-        PROJECT_ROOT / "evaluation/command_parser_trials.csv"
+        PROJECT_ROOT / (
+            # The Task 2 results (Gemini) keep their original file name.
+            "evaluation/command_parser_trials.csv"
+            if PARSER_PROVIDER == "gemini"
+            else f"evaluation/command_parser_trials_{PARSER_PROVIDER}.csv"
+        )
     )
     rows = []
 
@@ -77,7 +82,7 @@ def main():
         error = ""
 
         try:
-            command, latency = parse_command(utterance)
+            command, latency, _ = parse_command(utterance)
 
             passed = evaluate_match(
                 command,

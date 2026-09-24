@@ -70,7 +70,7 @@ SYNONYMS = {
     "fire hydrant": ["hydrant"],
     "cinder block": ["cinder", "concrete block", "breeze block", "brick block"],
     "car wheel": ["wheel", "tyre", "tire"],
-    "human figure": ["person", "human", "figure", "mannequin", "ragdoll", "doll"],
+    "human figure": ["person", "human", "figure", "mannequin", "ragdoll", "doll", "legs"],
     "bookshelf": ["bookshelf", "bookcase", "shelf", "shelves"],
     "cabinet": ["cabinet", "cupboard", "drawer"],
     "trash can": ["trash", "bin", "garbage", "waste"],
@@ -292,9 +292,10 @@ def evaluate(arguments: argparse.Namespace) -> None:
     if not scenes:
         raise SystemExit(f"No scenes in {MANIFEST}. Run `capture` first.")
 
+    # Failed API calls stay in the file as their own rows (the error rate is
+    # part of the comparison); a scene is only re-asked until it succeeds.
     results = read_rows(RESULTS)
     done = {row["trial_id"] for row in results if not row["notes"].startswith("ERROR")}
-    results = [row for row in results if row["trial_id"] in done or not row["trial_id"]]
 
     for provider in arguments.providers:
         describer = SceneDescriber(make_client(provider))
@@ -316,15 +317,18 @@ def evaluate(arguments: argparse.Namespace) -> None:
             try:
                 response = describer.describe(PROJECT_ROOT / scene["image_path"])
             except Exception as error:  # keep failed trials as evidence
-                row["notes"] = f"ERROR: {error}"
-                print(f"  failed: {error}")
+                attempts = sum(r["trial_id"].startswith(f"{trial_id}-error") for r in results)
+                row["trial_id"] = f"{trial_id}-error-{attempts + 1}"
+                row["notes"] = f"ERROR: {error}"[:500]
+                print(f"  failed: {str(error)[:200]}")
             else:
                 row.update(
                     model=response.model,
                     reported_objects=response.text,
                     latency_s=f"{response.latency_s:.3f}",
                     cost_usd="" if response.cost_usd is None else response.cost_usd,
-                    notes=f"tokens in={response.input_tokens} out={response.output_tokens}",
+                    notes=(f"tokens in={response.input_tokens} out={response.output_tokens} "
+                           f"retries={response.retries}"),
                 )
                 print(f"  {response.latency_s:.2f} s")
             results.append(row)
@@ -347,19 +351,32 @@ def mentioned(label: str, text: str) -> bool:
 def score(arguments: argparse.Namespace) -> None:
     rows = read_rows(RESULTS)
     summary: dict[str, dict] = {}
+    errors: dict[str, int] = {}
     for row in rows:
+        if row["notes"].startswith("ERROR"):
+            errors[row["model"]] = errors.get(row["model"], 0) + 1
+            continue
         if not row.get("reported_objects"):
             continue
         expected = [item.strip() for item in row["expected_objects"].split(";") if item.strip()]
-        text = row["reported_objects"]
-        correct = [label for label in expected if mentioned(label, text)]
-        missed = [label for label in expected if label not in correct]
-        extra = [label for label in SYNONYMS if label not in expected and mentioned(label, text)]
-        row["correct_objects"] = "; ".join(correct)
-        row["missed_objects"] = "; ".join(missed)
-        row["hallucinated_objects"] = "; ".join(extra)
-        if not row["notes"].startswith("ERROR") and "Keyword-scored" not in row["notes"]:
-            row["notes"] = f"{row['notes']}; Keyword-scored, verify hallucinations".lstrip("; ")
+
+        def split(value):
+            return [item.strip() for item in value.split(";") if item.strip()]
+
+        if "manually verified" in row["notes"]:
+            # Keep the verdicts recorded after checking the image by hand.
+            correct = split(row["correct_objects"])
+            extra = split(row["hallucinated_objects"])
+        else:
+            text = row["reported_objects"]
+            correct = [label for label in expected if mentioned(label, text)]
+            missed = [label for label in expected if label not in correct]
+            extra = [label for label in SYNONYMS if label not in expected and mentioned(label, text)]
+            row["correct_objects"] = "; ".join(correct)
+            row["missed_objects"] = "; ".join(missed)
+            row["hallucinated_objects"] = "; ".join(extra)
+            if "Keyword-scored" not in row["notes"]:
+                row["notes"] = f"{row['notes']}; Keyword-scored, verify hallucinations".lstrip("; ")
 
         stats = summary.setdefault(row["model"], {"trials": 0, "expected": 0, "correct": 0,
                                                   "extra": 0, "latency": 0.0})
@@ -370,11 +387,14 @@ def score(arguments: argparse.Namespace) -> None:
         stats["latency"] += float(row["latency_s"] or 0)
     write_rows(RESULTS, rows)
 
-    print(f"{'model':28s} {'trials':>6s} {'recall':>7s} {'possible halluc.':>17s} {'mean latency':>13s}")
+    print(f"{'model':28s} {'trials':>6s} {'recall':>7s} {'possible halluc.':>17s} "
+          f"{'mean latency':>13s} {'failed calls':>13s}")
     for model, stats in summary.items():
         recall = stats["correct"] / stats["expected"] if stats["expected"] else float("nan")
+        failed = sum(count for name, count in errors.items()
+                     if name == model or model.startswith(name))
         print(f"{model:28s} {stats['trials']:6d} {recall:7.0%} {stats['extra']:17d} "
-              f"{stats['latency'] / stats['trials']:12.2f}s")
+              f"{stats['latency'] / stats['trials']:12.2f}s {failed:13d}")
 
 
 def main() -> None:
