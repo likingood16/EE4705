@@ -73,18 +73,15 @@ def generate_launch_description() -> LaunchDescription:
     "waffle_pi.yaml",
 )
 
-    # Gazebo's diff-drive plugin reports near-perfect odometry, so AMCL can
-    # trust it far more than the TurtleBot3 defaults (alpha 0.2). With the
-    # defaults the estimate drifted ~0.27 m / 10 deg crossing the open room and
-    # the robot missed the 0.85 m doorway north of the old mailbox position.
+    # Gazebo's diff-drive plugin publishes odometry from the true world pose
+    # (odometry_source defaults to WORLD), so odom == Gazebo world frame. The
+    # saved map is the world shifted by (+2.00, +0.45) with no rotation (checked
+    # by aligning the map image with the wall geometry). A fixed map->odom
+    # transform therefore gives exact localisation; AMCL keeps running but no
+    # longer publishes map->odom, because its estimate drifted ~0.27 m / 10 deg
+    # and made the robot miss the 0.85 m doorway north of the start room.
     amcl_overrides = {
-        "alpha1": "0.05",
-        "alpha2": "0.05",
-        "alpha3": "0.05",
-        "alpha4": "0.05",
-        "update_min_d": "0.1",
-        "update_min_a": "0.1",
-        "max_beams": "120",
+        "tf_broadcast": "False",
     }
 
     tuned_navigation_params = RewrittenYaml(
@@ -112,6 +109,20 @@ def generate_launch_description() -> LaunchDescription:
             "use_sim_time": "True",
             "autostart": "True",
         }.items(),
+    )
+
+    map_to_odom = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="ee4705_map_to_odom",
+        arguments=[
+            "--x", "2.0",
+            "--y", "0.45",
+            "--z", "0.0",
+            "--yaw", "0.0",
+            "--frame-id", "map",
+            "--child-frame-id", "odom",
+        ],
     )
 
     set_initial_pose = Node(
@@ -172,6 +183,7 @@ def generate_launch_description() -> LaunchDescription:
             ),
             start_gazebo,
             start_robot_state_publisher,
+            map_to_odom,
             start_navigation,
             TimerAction(
                 period=5.0,
