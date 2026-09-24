@@ -231,6 +231,16 @@ Copy the user's visual question into the "question" field.
 4. Approach an object:
 {"action": "approach", "object": "cup"}
 
+Object approach rule:
+When the user asks the robot to move to, go to, drive up to, approach,
+get close to or stand next to an object, ALWAYS return the approach action
+with that object name, even if the object was not mentioned in an earlier
+description. The robot searches for the object with its own camera, and
+objects are often described differently (a mannequin may have been called
+"legs" or "pipes", a cinder block "a small black object"). Never refuse
+because you think the object is not there, and never treat an object in
+the house as a part of the robot.
+
 5. Stop:
 {"action": "stop"}
 

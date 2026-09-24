@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "red fire hydrant",
+    "label": "red fire hydrant",
+    "bbox": [
+      256.0,
+      0.0,
+      851.0,
+      709.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.6827784039996914,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"red fire hydrant\", \"bbox\": [256, 0, 851, 709]}",
+    "input_tokens": 664,
+    "output_tokens": 36,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": -5.992977596019576,
+    "y": 3.0881798362890973,
+    "yaw": 2.616199122614088
+  },
+  "bbox_pixels": [
+    163.84,
+    0.0,
+    544.64,
+    340.32
+  ],
+  "bearing_deg": -3.6931212730942122,
+  "laser_range_m": 0.5443072319030762,
+  "floor_range_m": 0.6844098669443781,
+  "target_range_m": 0.5443072319030762,
+  "range_source": "laser",
+  "step": {
+    "kind": "arrived",
+    "turn_deg": -3.6931212730942122,
+    "forward_m": 0.0
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "tyre",
+    "label": "tyre",
+    "bbox": [
+      421.0,
+      273.0,
+      638.0,
+      557.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.4442752009999822,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"tyre\", \"bbox\": [421, 273, 638, 557]}",
+    "input_tokens": 661,
+    "output_tokens": 36,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": 5.48619442427462,
+    "y": 0.7682759507247656,
+    "yaw": -0.2843834812944835
+  },
+  "bbox_pixels": [
+    269.44,
+    131.04000000000002,
+    408.32,
+    267.36
+  ],
+  "bearing_deg": -2.0383584946046303,
+  "laser_range_m": 1.774735927581787,
+  "floor_range_m": 2.136934895233972,
+  "target_range_m": 1.774735927581787,
+  "range_source": "laser",
+  "step": {
+    "kind": "advance",
+    "turn_deg": 0.0,
+    "forward_m": 1.2
+  }
+}

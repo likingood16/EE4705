@@ -1,0 +1,13 @@
+{
+  "reason": "robot_moved_during_perception",
+  "api_calls": 4,
+  "elapsed_s": 77.41243436800141,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": false,
+  "target": "grey block",
+  "initially_visible": true,
+  "final_range_m": 1.944981575012207,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/chat/attempt-so4yhfg9",
+  "input_tokens": 2648,
+  "output_tokens": 126
+}
