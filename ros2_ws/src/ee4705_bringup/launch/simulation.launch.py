@@ -80,13 +80,24 @@ def generate_launch_description() -> LaunchDescription:
     # transform therefore gives exact localisation; AMCL keeps running but no
     # longer publishes map->odom, because its estimate drifted ~0.27 m / 10 deg
     # and made the robot miss the 0.85 m doorway north of the start room.
-    amcl_overrides = {
+    #
+    # DWB ends its local plan at the first global-plan pose further than half
+    # the local costmap width from the robot. With the default 3 x 3 m window,
+    # the U-turn through the doorway north of the start room put that local
+    # goal behind the wall; GoalDist/GoalAlign score straight-line distance, so
+    # the robot turned to face the plain wall and stalled until the progress
+    # checker aborted. A 2 x 2 m window keeps the local goal on the near side
+    # of the wall. (forward_prune_distance would be the direct knob, but it is
+    # not in the TurtleBot3 YAML and RewrittenYaml cannot add new keys.)
+    navigation_overrides = {
         "tf_broadcast": "False",
+        "local_costmap.local_costmap.ros__parameters.width": "2",
+        "local_costmap.local_costmap.ros__parameters.height": "2",
     }
 
     tuned_navigation_params = RewrittenYaml(
         source_file=navigation_params,
-        param_rewrites=amcl_overrides,
+        param_rewrites=navigation_overrides,
         convert_types=True,
     )
 
