@@ -18,6 +18,7 @@ from launch.substitutions import (
     PathJoinSubstitution,
 )
 from launch_ros.actions import Node
+from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -72,6 +73,26 @@ def generate_launch_description() -> LaunchDescription:
     "waffle_pi.yaml",
 )
 
+    # Gazebo's diff-drive plugin reports near-perfect odometry, so AMCL can
+    # trust it far more than the TurtleBot3 defaults (alpha 0.2). With the
+    # defaults the estimate drifted ~0.27 m / 10 deg crossing the open room and
+    # the robot missed the 0.85 m doorway north of the old mailbox position.
+    amcl_overrides = {
+        "alpha1": "0.05",
+        "alpha2": "0.05",
+        "alpha3": "0.05",
+        "alpha4": "0.05",
+        "update_min_d": "0.1",
+        "update_min_a": "0.1",
+        "max_beams": "120",
+    }
+
+    tuned_navigation_params = RewrittenYaml(
+        source_file=navigation_params,
+        param_rewrites=amcl_overrides,
+        convert_types=True,
+    )
+
     start_gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(gazebo_launch),
         launch_arguments={
@@ -87,7 +108,7 @@ def generate_launch_description() -> LaunchDescription:
         PythonLaunchDescriptionSource(navigation_launch),
         launch_arguments={
             "map": map_file,
-            "params_file": navigation_params,
+            "params_file": tuned_navigation_params,
             "use_sim_time": "True",
             "autostart": "True",
         }.items(),
