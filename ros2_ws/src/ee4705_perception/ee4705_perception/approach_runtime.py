@@ -173,6 +173,31 @@ def corridor_clearance(ranges, angle_min, angle_increment, range_min, range_max,
     return nearest
 
 
+def sweep_clearance(ranges, angle_min, angle_increment, range_min, range_max,
+                    *, scan_x, inf_is_clear=False):
+    """Nearest return measured from the robot's centre, for turning in place.
+
+    The laser sits scan_x metres ahead of the rotation centre (negative when
+    behind it), so a fixed range threshold around the laser would be too
+    strict on one side and too loose on the other. Requires full 360 degree
+    coverage; returns None when a ray is invalid.
+    """
+    if not _scan_valid(ranges, angle_min, angle_increment, range_min, range_max):
+        return None
+    if len(ranges) * abs(angle_increment) < 2*math.pi - 0.05:
+        return None
+    nearest = math.inf
+    for angle, value in _scan_rays(ranges, angle_min, angle_increment,
+                                   range_min, range_max, inf_is_clear):
+        if value is None:
+            return None
+        if value == math.inf:
+            continue
+        nearest = min(nearest, math.hypot(scan_x + value*math.cos(angle),
+                                          value*math.sin(angle)))
+    return nearest
+
+
 def wait_for_grounding(call, *, poll, stop, now, timeout_s):
     """Keep ROS responsive while one daemon worker performs a network call.
 

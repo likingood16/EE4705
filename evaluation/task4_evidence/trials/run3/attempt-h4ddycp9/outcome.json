@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 3,
+  "elapsed_s": 20.336464412001078,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": true,
+  "target": "car wheel",
+  "initially_visible": true,
+  "final_range_m": 0.5398029088973999,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run3/attempt-h4ddycp9",
+  "input_tokens": 1986,
+  "output_tokens": 105
+}

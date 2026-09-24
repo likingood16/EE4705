@@ -1,0 +1,27 @@
+{
+  "grounding": {
+    "found": false,
+    "target": "person",
+    "label": "person",
+    "bbox": null,
+    "model": "qwen3-vl-plus",
+    "latency_s": 2.147335681998811,
+    "cost_usd": null,
+    "raw_text": "{\"found\": false, \"label\": \"person\", \"bbox\": null}",
+    "input_tokens": 661,
+    "output_tokens": 17,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": -6.846309795857355,
+    "y": -2.8375592047051232,
+    "yaw": 2.7118638033586646
+  },
+  "step": {
+    "kind": "search",
+    "turn_deg": 45.0,
+    "forward_m": 0.0
+  }
+}

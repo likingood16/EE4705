@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 4,
+  "elapsed_s": 28.146548593998887,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": true,
+  "target": "person",
+  "initially_visible": true,
+  "final_range_m": 0.5378855466842651,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run3/attempt-mso_fheh",
+  "input_tokens": 2644,
+  "output_tokens": 132
+}

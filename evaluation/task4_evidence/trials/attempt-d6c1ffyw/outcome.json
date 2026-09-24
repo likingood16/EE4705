@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 13,
+  "elapsed_s": 50.36330413700125,
+  "search_rotation_deg": 538.7443325209729,
+  "visual_candidate": false,
+  "target": "cinder block",
+  "initially_visible": false,
+  "final_range_m": 1.3493213653564453,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/attempt-d6c1ffyw",
+  "input_tokens": 6383,
+  "output_tokens": 264
+}

@@ -32,7 +32,7 @@ from .approach_policy import StepConfig, StepKind, plan_step
 from .approach_result_logger import ApproachTrial, append_approach_trial
 from .approach_runtime import (
     ApproachAbort, ApproachOutcome, corridor_clearance, fresh,
-    range_at_bearing, scan_clearance, stamp_seconds, wait_for_grounding,
+    range_at_bearing, stamp_seconds, sweep_clearance, wait_for_grounding,
     yaw_from_quaternion,
 )
 from .object_grounder import ObjectGrounder
@@ -43,13 +43,23 @@ CORRIDOR_HALF_WIDTH_M = 0.19
 # Stop driving when anything in that strip is this close to the laser
 # (bumper ~0.3 m from it).
 STOP_CLEARANCE_M = 0.43
-# Turning in place sweeps a 0.25 m radius around base_footprint; the laser is
-# 0.064 m behind it, so every return must be further than this.
-TURN_CLEARANCE_M = 0.32
+# Turning in place sweeps a 0.25 m radius around base_footprint (rear body
+# corners); keep every laser return, measured from that centre, 2 cm outside.
+TURN_CLEARANCE_M = 0.27
 MAX_FORWARD_MPS = 0.18
 MAX_TURN_RADPS = 0.6
 TURN_TOLERANCE_RAD = math.radians(1.5)
 FULL_TURN_RAD = 2 * math.pi
+MOTION_SENSORS = ("scan", "odom")
+REAR_CLEARANCE_M = 0.33
+# If the target disappears from view when the last sighting said the robot
+# would now be this close, the laser straight ahead confirms arrival instead
+# (close up the camera sees only the bottom of a tall object).
+CLOSE_RANGE_MARGIN_M = 0.15
+# When the straight path is blocked (e.g. a door frame), Nav2 is asked to
+# drive to this distance from the target, at most this many times.
+NAV2_STANDOFF_M = 0.9
+MAX_NAV2_ASSISTS = 2
 
 
 def estimate_target_range(front_laser, box_bottom_range):
@@ -67,16 +77,34 @@ def estimate_target_range(front_laser, box_bottom_range):
     return None, "unknown"
 
 
+def standoff_pose(robot_xy, robot_yaw, target_range, bearing):
+    """Odom-frame pose NAV2_STANDOFF_M short of the target, facing it.
+
+    target_range is the laser range and bearing the angle from the camera;
+    the target is placed along that bearing from the laser.
+    """
+    local_x = SCAN_X_M + target_range * math.cos(bearing)
+    local_y = target_range * math.sin(bearing)
+    target_x = robot_xy[0] + local_x * math.cos(robot_yaw) - local_y * math.sin(robot_yaw)
+    target_y = robot_xy[1] + local_x * math.sin(robot_yaw) + local_y * math.cos(robot_yaw)
+    heading = math.atan2(target_y - robot_xy[1], target_x - robot_xy[0])
+    return (target_x - NAV2_STANDOFF_M * math.cos(heading),
+            target_y - NAV2_STANDOFF_M * math.sin(heading), heading)
+
+
 def run_approach(target, client, *, enable_motion=False, exclusive_control=False,
                  evidence_dir="evaluation/task4_evidence", trial_id=None,
                  camera_topic="/camera/image_raw", scan_topic="/scan",
                  odom_topic="/odom", cmd_topic="/cmd_vel",
                  inf_is_clear=False, timeout_s=300.0, vlm_timeout_s=30.0,
-                 max_calls=25, step_config=StepConfig(), use_sim_time=True):
+                 max_calls=25, step_config=StepConfig(), use_sim_time=True,
+                 navigate=None):
     """Run one attempt in an already initialized ROS context.
 
     Caller must ensure Nav2/teleop have relinquished velocity control. Stop
     via /task4/stop or Ctrl+C. Blocks chat input but spins the stop service.
+    navigate(x, y, yaw) -> bool, if given, drives to an odom-frame pose (with
+    Nav2) when an obstacle blocks the straight path to the target.
     """
     # Lazy ROS imports keep the offline tests importable without ROS.
     import cv2
@@ -164,7 +192,8 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
                 return
             self.scan = (message.ranges, message.angle_min, message.angle_increment,
                          message.range_min, message.range_max)
-            self.around = scan_clearance(*self.scan, all_around=True, inf_is_clear=inf_is_clear)
+            self.around = sweep_clearance(*self.scan, scan_x=SCAN_X_M,
+                                          inf_is_clear=inf_is_clear)
 
         def on_odom(self, message):
             if not self.accept_stamp("odom", message):
@@ -202,18 +231,18 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
             if time.monotonic() - started >= timeout_s:
                 raise ApproachAbort("operation_timeout")
 
-        def stale_sensors(self):
+        def stale_sensors(self, names=("camera", "scan", "odom")):
             now = time.monotonic()
-            return [name for name in ("camera", "scan", "odom")
+            return [name for name in names
                     if not fresh(self.received.get(name), now, 0.75)]
 
-        def sensors_ready(self):
-            return (not self.stale_sensors() and self.frame is not None
+        def sensors_ready(self, names=("camera", "scan", "odom")):
+            return (not self.stale_sensors(names) and self.frame is not None
                     and self.yaw is not None and self.scan is not None)
 
-        def require_sensors(self):
-            if not self.sensors_ready():
-                stale = self.stale_sensors()
+        def require_sensors(self, names=("camera", "scan", "odom")):
+            if not self.sensors_ready(names):
+                stale = self.stale_sensors(names)
                 self.get_logger().warning(f"Stale or missing sensors: {stale}")
                 raise ApproachAbort("sensor_missing_invalid_or_stale")
 
@@ -236,7 +265,9 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
             try:
                 while True:
                     self.poll()
-                    self.require_sensors()
+                    # Laser and odometry keep the motion safe; the camera
+                    # matters only for the next VLM frame.
+                    self.require_sensors(MOTION_SENSORS)
                     if self.around is None:
                         raise ApproachAbort("rotation_scan_unavailable")
                     if self.around <= TURN_CLEARANCE_M:
@@ -268,7 +299,7 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
             try:
                 while True:
                     self.poll()
-                    self.require_sensors()
+                    self.require_sensors(MOTION_SENSORS)
                     clearance = self.corridor()
                     if clearance is None:
                         raise ApproachAbort("sensor_missing_invalid_or_stale")
@@ -289,12 +320,43 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
                 self.stop()
             return travelled, blocked
 
+        def back_off(self, distance=0.15, limit_s=8.0):
+            """Reverse a little (rear laser sector must stay clear) to make room to turn."""
+            x0, y0 = self.pose_xy
+            deadline = time.monotonic() + limit_s
+            try:
+                while math.dist(self.pose_xy, (x0, y0)) < distance:
+                    self.poll()
+                    self.require_sensors(MOTION_SENSORS)
+                    # The body's rear is 0.13 m behind the laser.
+                    rear = range_at_bearing(*self.scan, bearing=math.pi,
+                                            half_window=math.radians(60),
+                                            inf_is_clear=inf_is_clear)
+                    if rear is None or rear <= REAR_CLEARANCE_M or time.monotonic() >= deadline:
+                        raise ApproachAbort("obstacle_during_turn")
+                    self.publish(-0.08, 0.0)
+            finally:
+                self.stop()
+
+        def turn_with_recovery(self, angle):
+            """Turn; if the sweep is blocked, back off once and try again."""
+            try:
+                return self.turn_by(angle)
+            except ApproachAbort as error:
+                if str(error) != "obstacle_during_turn":
+                    raise
+                self.get_logger().info("Turn blocked; backing off 0.15 m and retrying.")
+                self.back_off()
+                return self.turn_by(angle)
+
     node = ApproachNode()
     grounder = ObjectGrounder(client)
     reason = "not_started"
     arrived = False
     start_pose = ""
     last_blocked = False
+    expect_close = False
+    nav2_assists = 0
     try:
         # Explicitly stop before startup. Poll using wall time even if /clock pauses.
         deadline = time.monotonic() + 10.0
@@ -344,7 +406,8 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
 
             height, width = frame.shape[:2]
             record = {"grounding": asdict(grounding), "image_width": width,
-                      "image_height": height}
+                      "image_height": height,
+                      "odom_pose": {"x": pose_before[0], "y": pose_before[1], "yaw": yaw_before}}
             bearing = target_range = None
             source = "not_found"
             if grounding.found:
@@ -386,6 +449,21 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
                 reason = "observation_only"
                 break
 
+            if step.kind == StepKind.SEARCH and expect_close:
+                ahead = range_at_bearing(*scan, bearing=0.0, half_window=math.radians(6),
+                                         inf_is_clear=inf_is_clear)
+                if ahead is not None and ahead <= step_config.arrival_range_m + CLOSE_RANGE_MARGIN_M:
+                    record["laser_confirmed_arrival_m"] = ahead
+                    (folder / f"frame-{index:03d}.json").write_text(
+                        json.dumps(record, indent=2), encoding="utf-8")
+                    node.get_logger().info(
+                        f"{target}: lost from view at close range; laser confirms "
+                        f"{ahead:.2f} m ahead, treating as arrived")
+                    final_range = ahead
+                    arrived = True
+                    reason = "arrived_close_range"
+                    break
+            expect_close = False
             if step.kind == StepKind.SEARCH:
                 if search_start_yaw is None:
                     search_start_yaw, search_turns = node.yaw, 0
@@ -406,18 +484,35 @@ def run_approach(target, client, *, enable_motion=False, exclusive_control=False
                 # new search starts if the target is lost again.
                 search_rotation += search_turns * step_config.search_step_rad
                 search_start_yaw = None
-            if step.turn_rad:
-                node.turn_by(step.turn_rad)
             if step.kind == StepKind.ARRIVED:
+                # Already within the arrival bearing; a last small turn adds
+                # nothing and can be refused next to walls.
                 arrived = True
                 reason = "arrived"
                 break
+            if step.turn_rad:
+                node.turn_with_recovery(step.turn_rad)
             if step.forward_m >= 0.05:
-                _, blocked = node.drive_forward(step.forward_m)
-                # Blocked twice in a row while the target is still far: something
-                # other than the target is in the way.
+                driven, blocked = node.drive_forward(step.forward_m)
+                # Facing the target now; remember whether it should be close.
+                expect_close = (target_range is not None and target_range - driven
+                                <= step_config.arrival_range_m + CLOSE_RANGE_MARGIN_M)
                 if blocked and last_blocked:
-                    raise ApproachAbort("path_blocked")
+                    # Blocked twice in a row while the target is still far:
+                    # something else is in the way. Let Nav2 plan around it.
+                    if navigate is None or nav2_assists >= MAX_NAV2_ASSISTS \
+                            or target_range is None:
+                        raise ApproachAbort("path_blocked")
+                    nav2_assists += 1
+                    # Range and bearing were measured from the pose of that frame.
+                    goal = standoff_pose(pose_before, yaw_before, target_range, bearing)
+                    node.get_logger().info(
+                        f"{target}: path blocked, asking Nav2 to go to "
+                        f"({goal[0]:.2f}, {goal[1]:.2f}) in odom")
+                    node.stop()
+                    if not navigate(*goal):
+                        raise ApproachAbort("path_blocked")
+                    blocked = False
                 last_blocked = blocked
         else:
             reason = "api_call_limit"

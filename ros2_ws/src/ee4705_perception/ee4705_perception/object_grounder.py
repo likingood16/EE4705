@@ -9,11 +9,30 @@ from pathlib import Path
 from .vlm_client import VLMClient
 
 
-GROUNDING_PROMPT = """You are the visual grounding system of an indoor robot.
+# Tells the model what this robot's view looks like. The first version
+# ("Locate the target object ... Do not guess") missed the white mannequin
+# ("person"), which the camera sees only up to its knees when close, and the
+# small dark cinder block, and boxed a brick pillar as "cinder block": 6/12
+# correct on saved trial frames with known answers versus 12/12 for this one
+# (evaluation/grounding_prompt_test.py).
+GROUNDING_PROMPT = """You are the visual grounding system of a small indoor robot. Its camera is
+only 10 cm above the floor, and the house is a simulation built from simple
+3D models.
 
 Locate the target object in the supplied image.
 
 Target object: {target}
+
+Things to know about this robot's view:
+- Objects are simplified 3D models. For example, a person may be a plain
+  white or grey mannequin without a face or clothes.
+- Because the camera is low, a nearby tall object is often cut off at the top
+  of the image, e.g. only a person's legs and feet are visible. Report the
+  target if a clearly identifiable part of it is visible.
+- The target may be small and far away; look carefully along the floor.
+- Walls, wall corners, pillars, doorways and other parts of the building are
+  never the target. Do not box a different object that merely has a similar
+  colour or texture.
 
 Return ONLY one JSON object in this exact format:
 {{"found": true, "label": "object name", "bbox": [x1, y1, x2, y2]}}
@@ -24,10 +43,10 @@ Use coordinates normalized from 0 to 1000:
 - x1 and y1 are the top-left corner of the object.
 - x2 and y2 are the bottom-right corner of the object.
 
-If the target is not clearly visible, return:
+If the target is not visible, return:
 {{"found": false, "label": "object name", "bbox": null}}
 
-Do not guess. Do not include Markdown or explanatory text."""
+Do not include Markdown or explanatory text."""
 
 
 @dataclass(frozen=True)
@@ -90,8 +109,9 @@ def validate_bbox(value: object) -> tuple[float, float, float, float]:
 class ObjectGrounder:
     """Locate a language-specified object in one saved image."""
 
-    def __init__(self, client: VLMClient) -> None:
+    def __init__(self, client: VLMClient, prompt: str = GROUNDING_PROMPT) -> None:
         self.client = client
+        self.prompt = prompt
 
     def locate(
         self,
@@ -107,7 +127,7 @@ class ObjectGrounder:
 
         response = self.client.ask(
             image_path,
-            GROUNDING_PROMPT.format(target=cleaned_target),
+            self.prompt.format(target=cleaned_target),
         )
         data = extract_json_object(response.text)
 

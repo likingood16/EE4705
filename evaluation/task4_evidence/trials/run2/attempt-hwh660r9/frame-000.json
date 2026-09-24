@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "cinder block",
+    "label": "cinder block",
+    "bbox": [
+      64.0,
+      424.0,
+      304.0,
+      558.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.2661446950005484,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"cinder block\", \"bbox\": [64, 424, 304, 558]}",
+    "input_tokens": 663,
+    "output_tokens": 36,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": 5.440016874347789,
+    "y": -3.2800645202715173,
+    "yaw": -1.3961609576242877
+  },
+  "bbox_pixels": [
+    40.96,
+    203.51999999999998,
+    194.56,
+    267.84000000000003
+  ],
+  "bearing_deg": 20.869190849869646,
+  "laser_range_m": 1.8651516437530518,
+  "floor_range_m": 2.093995803846404,
+  "target_range_m": 1.8651516437530518,
+  "range_source": "laser",
+  "step": {
+    "kind": "advance",
+    "turn_deg": 20.869190849869646,
+    "forward_m": 1.2
+  }
+}

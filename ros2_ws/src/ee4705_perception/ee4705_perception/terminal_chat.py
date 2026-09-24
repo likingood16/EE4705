@@ -622,6 +622,7 @@ def run_approach_command(obj):
     """Run the Task 4 approach controller; returns (reply, stage record)."""
 
     from ee4705_perception.approach_robot import run_approach
+    from ee4705_perception.goto_room import navigate_to_pose
 
     enable_motion = os.getenv("TASK4_ENABLE_MOTION", "1") == "1"
 
@@ -637,6 +638,8 @@ def run_approach_command(obj):
         # Verified in Gazebo: the simulated LDS reports +inf for no return.
         inf_is_clear=True,
         evidence_dir=APPROACH_EVIDENCE_DIR,
+        # Lets Nav2 plan around an obstacle between the robot and the object.
+        navigate=navigate_to_pose if enable_motion else None,
     )
 
     stage = {

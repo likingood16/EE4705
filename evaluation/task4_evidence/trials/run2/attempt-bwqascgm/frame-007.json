@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "person",
+    "label": "person",
+    "bbox": [
+      183.0,
+      0.0,
+      454.0,
+      650.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.056756337002298,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"person\", \"bbox\": [183, 0, 454, 650]}",
+    "input_tokens": 661,
+    "output_tokens": 33,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": -6.850456566543924,
+    "y": -2.649554391244566,
+    "yaw": -2.088652685280253
+  },
+  "bbox_pixels": [
+    117.12,
+    0.0,
+    290.56,
+    312.0
+  ],
+  "bearing_deg": 12.351425108290432,
+  "laser_range_m": 0.8983602523803711,
+  "floor_range_m": 0.8961268038930356,
+  "target_range_m": 0.8983602523803711,
+  "range_source": "laser",
+  "step": {
+    "kind": "advance",
+    "turn_deg": 12.351425108290432,
+    "forward_m": 0.34836025238037105
+  }
+}

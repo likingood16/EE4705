@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "car wheel",
+    "label": "car wheel",
+    "bbox": [
+      213.0,
+      359.0,
+      337.0,
+      528.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 0.96224245600024,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"car wheel\", \"bbox\": [213, 359, 337, 528]}",
+    "input_tokens": 662,
+    "output_tokens": 36,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": 5.123428954788288,
+    "y": 2.3107818983687207,
+    "yaw": -1.0414734336860973
+  },
+  "bbox_pixels": [
+    136.32,
+    172.32,
+    215.68,
+    253.44
+  ],
+  "bearing_deg": 15.187376627980907,
+  "laser_range_m": 2.873671770095825,
+  "floor_range_m": 4.200627932842277,
+  "target_range_m": 2.873671770095825,
+  "range_source": "laser",
+  "step": {
+    "kind": "advance",
+    "turn_deg": 15.187376627980907,
+    "forward_m": 1.2
+  }
+}

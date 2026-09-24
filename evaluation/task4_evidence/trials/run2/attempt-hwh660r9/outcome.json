@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 3,
+  "elapsed_s": 15.935629768999206,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": true,
+  "target": "cinder block",
+  "initially_visible": true,
+  "final_range_m": 0.5375233888626099,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run2/attempt-hwh660r9",
+  "input_tokens": 1989,
+  "output_tokens": 110
+}

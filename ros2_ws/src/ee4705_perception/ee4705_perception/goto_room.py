@@ -239,3 +239,56 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+def navigate_to_pose(x, y, yaw, frame_id="odom", timeout_s=150.0):
+    """Drive to one pose with Nav2 in an existing ROS context; True on success.
+
+    Used by the object approach to get around an obstacle between the robot
+    and the target (the goal frame can be odom; Nav2 transforms it to map).
+    """
+
+    import time
+
+    from rclpy.parameter import Parameter
+
+    node = rclpy.create_node(
+        "ee4705_navigate_to_pose",
+        parameter_overrides=[Parameter("use_sim_time", value=True)],
+    )
+    client = ActionClient(node, NavigateToPose, "navigate_to_pose")
+
+    try:
+        if not client.wait_for_server(timeout_sec=20.0):
+            return False
+
+        goal = NavigateToPose.Goal()
+        goal.pose.header.frame_id = frame_id
+        goal.pose.header.stamp = node.get_clock().now().to_msg()
+        goal.pose.pose.position.x = float(x)
+        goal.pose.pose.position.y = float(y)
+        goal.pose.pose.orientation.z = math.sin(yaw / 2.0)
+        goal.pose.pose.orientation.w = math.cos(yaw / 2.0)
+
+        deadline = time.monotonic() + timeout_s
+        sent = client.send_goal_async(goal)
+        while not sent.done() and time.monotonic() < deadline:
+            rclpy.spin_once(node, timeout_sec=0.1)
+        handle = sent.result()
+        if handle is None or not handle.accepted:
+            return False
+
+        result = handle.get_result_async()
+        while not result.done():
+            rclpy.spin_once(node, timeout_sec=0.1)
+            if time.monotonic() >= deadline:
+                cancel = handle.cancel_goal_async()
+                while not cancel.done():
+                    rclpy.spin_once(node, timeout_sec=0.1)
+                return False
+
+        # 4 = STATUS_SUCCEEDED
+        return result.result().status == 4
+
+    finally:
+        node.destroy_node()

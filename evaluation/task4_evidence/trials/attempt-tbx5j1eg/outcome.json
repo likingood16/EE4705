@@ -1,0 +1,13 @@
+{
+  "reason": "path_blocked",
+  "api_calls": 6,
+  "elapsed_s": 20.436295396000787,
+  "search_rotation_deg": 180.0,
+  "visual_candidate": false,
+  "target": "fire hydrant",
+  "initially_visible": false,
+  "final_range_m": 2.951699733734131,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/attempt-tbx5j1eg",
+  "input_tokens": 2946,
+  "output_tokens": 150
+}

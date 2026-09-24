@@ -36,6 +36,7 @@ class Transport:
         self.obstacle = False
         self.cancel = False
         self.frozen_stamp = False
+        self.frozen_camera = False
         self.fail_image = False
         self.api_active = False
         self.motion_during_api = False
@@ -122,7 +123,8 @@ class Transport:
         stamp_t = 100.0 if self.frozen_stamp else self.t
         sec = int(stamp_t)
         header = NS(stamp=NS(sec=sec, nanosec=int((stamp_t-sec)*1e9)))
-        self.node.callbacks["/camera/image_raw"](NS(header=header))
+        if not self.frozen_camera:
+            self.node.callbacks["/camera/image_raw"](NS(header=header))
         if not self.drop_scan:
             ranges = [0.2 if self.obstacle else 3.0]*360
             if not self.obstacle:
@@ -252,6 +254,44 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(result.reason, "path_blocked")
         self.assertFalse(any(v[0] > 0 for v in self.transport.published))
         self.assertEqual(self.transport.published[-1], (0, 0))
+
+    def test_blocked_path_is_handed_to_nav2(self):
+        self.transport.side_obstacle = True
+        goals = []
+
+        def navigate(x, y, yaw):
+            goals.append((x, y, yaw))
+            self.transport.side_obstacle = False  # Nav2 went around it
+            self.transport.x, self.transport.y = x, y
+            return True
+
+        result = self.run_attempt(enable_motion=True, exclusive_control=True,
+                                  navigate=navigate)
+        self.assertEqual(len(goals), 1)
+        self.assertAlmostEqual(goals[0][0], 2.0 - 0.9, delta=0.1)  # 0.9 m short of it
+        self.assertEqual(result.reason, "arrived")
+
+    def test_camera_gap_does_not_stop_motion(self):
+        def hook():
+            self.transport.frozen_camera = self.transport.last != (0.0, 0.0)
+        self.transport.hook = hook
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+        self.assertEqual(result.reason, "arrived")
+
+    def test_target_lost_at_close_range_is_confirmed_by_laser(self):
+        self.transport.target_distance = 1.3
+        # Seen once, then (too close) the VLM no longer recognises it.
+        self.client = Client(self.transport, ["auto"] + ["missing"] * 20)
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+        self.assertEqual(result.reason, "arrived_close_range")
+        self.assertTrue(result.visual_candidate)
+        self.assertEqual(self.client.calls, 2)
+
+    def test_lost_target_far_away_still_searches(self):
+        self.transport.target_distance = 3.0
+        self.client = Client(self.transport, ["auto"] + ["missing"] * 20)
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+        self.assertEqual(result.reason, "object_not_found_search_limit")
 
     def test_stale_scan_interrupts_drive(self):
         def hook():

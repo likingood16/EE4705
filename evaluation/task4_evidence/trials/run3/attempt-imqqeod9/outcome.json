@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 8,
+  "elapsed_s": 42.55287958500048,
+  "search_rotation_deg": 270.0,
+  "visual_candidate": true,
+  "target": "person",
+  "initially_visible": false,
+  "final_range_m": 0.5451341867446899,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run3/attempt-imqqeod9",
+  "input_tokens": 5288,
+  "output_tokens": 168
+}

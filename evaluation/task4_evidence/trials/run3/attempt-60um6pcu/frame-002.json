@@ -1,0 +1,27 @@
+{
+  "grounding": {
+    "found": false,
+    "target": "fire hydrant",
+    "label": "fire hydrant",
+    "bbox": null,
+    "model": "qwen3-vl-plus",
+    "latency_s": 0.7701644949993351,
+    "cost_usd": null,
+    "raw_text": "{\"found\": false, \"label\": \"fire hydrant\", \"bbox\": null}",
+    "input_tokens": 663,
+    "output_tokens": 19,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": -6.582036433880662,
+    "y": 0.4616825180750227,
+    "yaw": 0.005421357851911599
+  },
+  "step": {
+    "kind": "search",
+    "turn_deg": 45.0,
+    "forward_m": 0.0
+  }
+}

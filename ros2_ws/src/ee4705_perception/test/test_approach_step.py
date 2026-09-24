@@ -102,3 +102,20 @@ class RangeFusionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SweepAndStandoffTests(unittest.TestCase):
+    def test_sweep_measured_from_robot_centre(self):
+        from ee4705_perception.approach_runtime import sweep_clearance
+        ranges = [3.0] * 360
+        ranges[0] = 0.33  # 0.33 m ahead of the laser = 0.266 m from the centre
+        ranges[180] = 0.33  # behind the laser = 0.394 m from the centre
+        value = sweep_clearance(*scan(ranges), scan_x=-0.064)
+        self.assertAlmostEqual(value, 0.33 - 0.064, places=3)
+
+    def test_standoff_pose_is_short_of_target_and_faces_it(self):
+        from ee4705_perception.approach_robot import NAV2_STANDOFF_M, standoff_pose
+        x, y, yaw = standoff_pose((1.0, 2.0), math.pi / 2, 3.0, 0.0)
+        self.assertAlmostEqual(yaw, math.pi / 2)
+        self.assertAlmostEqual(x, 1.0)
+        self.assertAlmostEqual(y, 2.0 - 0.064 + 3.0 - NAV2_STANDOFF_M)

@@ -24,4 +24,9 @@ the controller used (`box-NNN.jpg`), the raw model answer and decision
   - `attempt-j9t4gixl`: motion, "blue ball" (not in the world): full turn,
     8 views, "Sorry, I could not find the blue ball after turning a full circle."
 - `chat/`: approaches started from `terminal_chat` ("move to the ...").
-- `trials/`: the 10 evaluation trials (`evaluation/run_approach_trials.py`).
+- `trials/`: the 12 evaluation trials (`evaluation/run_approach_trials.py`),
+  three runs. Run 1 (folders directly in `trials/`) used the first controller
+  and grounding prompt; `run2/` after the prompt and controller fixes; `run3/`
+  adds laser-confirmed close-range arrival and backing off before a blocked
+  turn. Each frame JSON also records the odometry pose it was taken from
+  (runs 2-3).

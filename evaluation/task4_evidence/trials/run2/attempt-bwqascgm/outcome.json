@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 16,
+  "elapsed_s": 58.97240287900058,
+  "search_rotation_deg": 628.7451498509479,
+  "visual_candidate": false,
+  "target": "person",
+  "initially_visible": false,
+  "final_range_m": 0.8983602523803711,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run2/attempt-bwqascgm",
+  "input_tokens": 10576,
+  "output_tokens": 304
+}

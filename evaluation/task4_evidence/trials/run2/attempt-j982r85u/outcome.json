@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 3,
+  "elapsed_s": 20.942490002998966,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": true,
+  "target": "car wheel",
+  "initially_visible": true,
+  "final_range_m": 0.5685071349143982,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run2/attempt-j982r85u",
+  "input_tokens": 1986,
+  "output_tokens": 106
+}
