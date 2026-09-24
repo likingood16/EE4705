@@ -36,6 +36,7 @@ def call_with_retries(call, *, attempts: int = 3, first_delay_s: float = 2.0):
             return call(), attempt
         except Exception as error:
             if attempt == attempts - 1 or not is_transient_error(error):
+                error.attempts = attempt + 1  # for API-call accounting
                 raise
             time.sleep(first_delay_s * 2**attempt)
     raise AssertionError("unreachable")

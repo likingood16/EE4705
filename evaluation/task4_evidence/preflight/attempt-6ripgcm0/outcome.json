@@ -1,0 +1,13 @@
+{
+  "reason": "vlm_timeout",
+  "api_calls": 1,
+  "elapsed_s": 31.123796575999222,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": false,
+  "target": "fire hydrant",
+  "initially_visible": null,
+  "final_range_m": null,
+  "evidence_dir": "evaluation/task4_evidence/preflight/attempt-6ripgcm0",
+  "input_tokens": 0,
+  "output_tokens": 0
+}

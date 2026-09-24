@@ -1,6 +1,48 @@
 # Student C: Task 4 integration handoff
 
-## Status and scope
+## Update: validated in Gazebo and connected to the chat
+
+The sections below are the original fake-ROS handoff. Since then the
+controller has been tested in the live simulation, and the pulse design
+(at most 4 cm per VLM call) was replaced, because a 3 m approach needed ~75
+calls. Current behaviour of `approach_robot.run_approach`:
+
+1. Stop, settle, grab a fresh frame, ask the VLM (Qwen3-VL by default) for the
+   box while stopped. The robot must not move during the request.
+2. Bearing from the box centre (pinhole model, 62 degree HFOV). Range from the
+   laser along that bearing, or from the box's bottom edge on the floor when
+   the laser (0.13 m scan plane) passes over a low object.
+3. Closed-loop turn on odometry to face the target, then a closed-loop drive
+   of up to 1.2 m, stopping early if anything in the robot-width laser
+   corridor is closer than 0.43 m. Rotation needs 0.32 m all-around clearance.
+4. Arrival when the target range is <= 0.60 m (bumper ~0.4 m from the object)
+   and it is within 10 degrees of centre. Reply: "I am now next to the <object>."
+5. Not visible: turn 45 degrees and look again; after a full turn (8 views)
+   reply "Sorry, I could not find the <object> after turning a full circle."
+
+Preflight checks in the live simulation: `/cmd_vel` is `geometry_msgs/Twist`;
+scan angle 0 is straight ahead and +inf means no return (so `--inf-is-clear`
+is correct); image right is robot right (VLM bearing -5.3 deg vs Gazebo
+ground truth -5.0 deg); the node uses simulation time. Camera subscribers use
+RELIABLE QoS (see `config/cyclonedds.xml`).
+
+Chat: "move to the fire hydrant" runs the approach with motion enabled
+(`TASK4_ENABLE_MOTION=0` makes it observation-only; `GROUNDING_PROVIDER`
+selects qwen or gemini). Standalone:
+
+```bash
+ros2 run ee4705_perception approach_robot --target "fire hydrant" \
+  --inf-is-clear                                  # observation only
+ros2 run ee4705_perception approach_robot --target "fire hydrant" \
+  --inf-is-clear --enable-motion --exclusive-control
+```
+
+Trial results: `evaluation/object_approach_trials.csv`; evidence images (with
+the box, bearing and range drawn on) under `evaluation/task4_evidence/`.
+
+---
+
+## Original handoff: status and scope
 
 Prepared against uploaded commit `4d2846f20dcad0f29b57c343ed7db7e6087cd06d`.
 The 57 supplied tests pass unchanged; 29 new tests pass (86 total).

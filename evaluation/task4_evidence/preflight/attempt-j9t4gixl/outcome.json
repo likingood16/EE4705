@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 8,
+  "elapsed_s": 29.743400737999764,
+  "search_rotation_deg": 347.68824289079015,
+  "visual_candidate": false,
+  "target": "blue ball",
+  "initially_visible": false,
+  "final_range_m": null,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/preflight/attempt-j9t4gixl",
+  "input_tokens": 3920,
+  "output_tokens": 144
+}

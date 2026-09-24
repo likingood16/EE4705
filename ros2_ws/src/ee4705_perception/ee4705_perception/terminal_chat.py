@@ -1,3 +1,15 @@
+"""Multi-turn terminal chat: the robot's dialogue manager (Tasks 2 and 5).
+
+Every user turn is parsed by an LLM into one JSON command, which is then
+executed: navigate to a room (and describe it on arrival), describe the
+view, answer a visual question, approach an object, stop, or just reply.
+
+handle_turn() runs one complete turn and returns the reply together with
+per-stage results, latencies and API usage, so the end-to-end evaluation
+(evaluation/run_end_to_end_trials.py) drives exactly the same pipeline as
+the interactive chat.
+"""
+
 import csv
 import json
 import os
@@ -38,8 +50,17 @@ CURRENT_CAMERA_IMAGE = (
     / "current_camera.jpg"
 )
 
+APPROACH_EVIDENCE_DIR = (
+    PROJECT_ROOT
+    / "evaluation"
+    / "task4_evidence"
+    / "chat"
+)
+
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_FILE = LOG_DIR / "terminal_chat_log.csv"
+# One JSON object per turn with per-stage latency and API usage.
+TURN_LOG_FILE = LOG_DIR / "terminal_chat_turns.jsonl"
 
 LOG_DIR.mkdir(
     parents=True,
@@ -53,53 +74,85 @@ CURRENT_CAMERA_IMAGE.parent.mkdir(
 
 
 # ============================================================
-# GEMINI COMMAND-PARSER CONFIGURATION
+# COMMAND-PARSER CONFIGURATION
 # ============================================================
 
+# Gemini is the parser evaluated in Task 2. When it is unavailable (503/504
+# overload errors were frequent during testing), the same prompt is sent to
+# a Qwen text model so a turn is not lost.
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
     "gemini-3.5-flash-lite",
 )
+
+QWEN_PARSER_MODEL = os.getenv(
+    "QWEN_PARSER_MODEL",
+    "qwen-plus",
+)
+
+PARSER_FALLBACK = os.getenv("PARSER_FALLBACK", "1") == "1"
 
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY"),
     http_options=types.HttpOptions(timeout=90_000),  # milliseconds
 )
 
+qwen_text_client = None
+
+# Keep the prompt bounded: the last N history entries (3 per turn).
+MAX_HISTORY_ENTRIES = 36
+
 
 # ============================================================
-# VISION MODEL
+# VISION MODELS
 # ============================================================
 
 vision_describer = None
+grounding_client = None
+
+
+def make_vlm_client(provider):
+    """Create a Gemini or Qwen vision client."""
+
+    provider = provider.strip().lower()
+
+    if provider == "gemini":
+        return GeminiVLMClient()
+
+    if provider == "qwen":
+        return QwenVLMClient()
+
+    raise ValueError(
+        "The provider must be 'gemini' or 'qwen'."
+    )
 
 
 def get_vision_describer():
-    """Create the selected vision client only when requested."""
+    """Create the selected scene-description client only when requested."""
 
     global vision_describer
 
     if vision_describer is None:
-        provider = os.getenv(
-            "VISION_PROVIDER",
-            "gemini",
-        ).strip().lower()
-
-        if provider == "gemini":
-            vision_client = GeminiVLMClient()
-        elif provider == "qwen":
-            vision_client = QwenVLMClient()
-        else:
-            raise ValueError(
-                "VISION_PROVIDER must be "
-                "'gemini' or 'qwen'."
-            )
-
         vision_describer = SceneDescriber(
-            vision_client
+            make_vlm_client(os.getenv("VISION_PROVIDER", "gemini"))
         )
 
     return vision_describer
+
+
+def get_grounding_client():
+    """Qwen-VL is trained for grounding, so it is the default here."""
+
+    global grounding_client
+
+    if grounding_client is None:
+        grounding_client = make_vlm_client(
+            os.getenv("GROUNDING_PROVIDER", "qwen")
+        )
+
+    return grounding_client
+
+
 def ask_current_view(question=None):
     """Capture the latest frame and send it to the selected vision client."""
 
@@ -119,6 +172,8 @@ def ask_current_view(question=None):
     return describer.describe(
         saved_image
     )
+
+
 # ============================================================
 # SYSTEM PROMPT
 # ============================================================
@@ -304,6 +359,13 @@ def log_interaction(
         ])
 
 
+def log_turn(turn):
+    """Append the full per-stage record of one turn to the JSONL log."""
+
+    with open(TURN_LOG_FILE, "a", encoding="utf-8") as file:
+        file.write(json.dumps(turn) + "\n")
+
+
 # ============================================================
 # BUILD MULTI-TURN PROMPT
 # ============================================================
@@ -314,7 +376,7 @@ def build_prompt(
 
     conversation = ""
 
-    for item in history:
+    for item in history[-MAX_HISTORY_ENTRIES:]:
 
         conversation += (
             f"{item['role'].upper()}: "
@@ -329,64 +391,132 @@ def build_prompt(
 
 
 # ============================================================
-# GEMINI COMMAND PARSER
+# COMMAND PARSER
 # ============================================================
+
+def _parse_with_gemini(prompt):
+    """Return (JSON text, input tokens, output tokens, retries) from Gemini."""
+
+    # With a fallback available, retry once only: Gemini overload errors
+    # took 15-25 s each to arrive during testing.
+    response, retries = call_with_retries(
+        lambda: client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                temperature=0.1,
+            ),
+        ),
+        attempts=2 if PARSER_FALLBACK else 3,
+    )
+
+    usage = getattr(response, "usage_metadata", None)
+
+    return (
+        response.text.strip(),
+        getattr(usage, "prompt_token_count", None),
+        getattr(usage, "candidates_token_count", None),
+        retries,
+    )
+
+
+def _parse_with_qwen(prompt):
+    """Return (JSON text, input tokens, output tokens, retries) from Qwen."""
+
+    global qwen_text_client
+
+    if qwen_text_client is None:
+        from openai import OpenAI
+
+        qwen_text_client = OpenAI(
+            api_key=os.getenv("QWEN_API_KEY"),
+            base_url=os.getenv(
+                "QWEN_BASE_URL",
+                "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+            ),
+            timeout=60.0,
+            max_retries=0,
+        )
+
+    response, retries = call_with_retries(
+        lambda: qwen_text_client.chat.completions.create(
+            model=QWEN_PARSER_MODEL,
+            temperature=0.1,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+        )
+    )
+
+    usage = getattr(response, "usage", None)
+
+    return (
+        (response.choices[0].message.content or "").strip(),
+        getattr(usage, "prompt_tokens", None),
+        getattr(usage, "completion_tokens", None),
+        retries,
+    )
+
 
 def parse_command(
     user_text
 ):
+    """Parse one utterance; returns (command, latency_s, stage record)."""
 
     prompt = build_prompt(
         user_text
     )
 
+    parsers = [("gemini", GEMINI_MODEL, _parse_with_gemini)]
+
+    if PARSER_FALLBACK:
+        parsers.append(("qwen", QWEN_PARSER_MODEL, _parse_with_qwen))
+
+    stage = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "errors": []}
+    command = None
     start_time = time.time()
 
-    try:
+    for provider, model, parse in parsers:
 
-        # Retry transient overload errors (503 "high demand" was seen live).
-        response, _ = call_with_retries(
-            lambda: client.models.generate_content(
+        stage["calls"] += 1
 
-                model=GEMINI_MODEL,
+        try:
 
-                contents=prompt,
+            output, tokens_in, tokens_out, retries = parse(prompt)
+            stage["calls"] += retries
+            stage["input_tokens"] += tokens_in or 0
+            stage["output_tokens"] += tokens_out or 0
 
-                config=types.GenerateContentConfig(
-
-                    system_instruction=SYSTEM_PROMPT,
-
-                    response_mime_type="application/json",
-
-                    temperature=0.1
-                )
+            command = json.loads(
+                output
             )
-        )
 
-        latency = (
-            time.time()
-            - start_time
-        )
+            if not isinstance(command, dict):
+                raise ValueError("The parser did not return a JSON object.")
 
-        output = (
-            response.text
-            .strip()
-        )
+            stage["model"] = model
+            break
 
-        command = json.loads(
-            output
-        )
+        except Exception as error:
 
-    except Exception as error:
+            stage["calls"] += getattr(error, "attempts", 1) - 1
 
-        latency = (
-            time.time()
-            - start_time
-        )
+            print(
+                f"[Parser error ({provider}): {error}]"
+            )
 
-        print(
-            f"[Parser error: {error}]"
-        )
+            stage["errors"].append(f"{provider}: {error}"[:300])
+
+    latency = (
+        time.time()
+        - start_time
+    )
+
+    if command is None:
 
         command = {
             "action": "chat",
@@ -396,6 +526,7 @@ def parse_command(
             )
         }
 
+    stage["latency_s"] = round(latency, 3)
 
     # Save user turn
     history.append({
@@ -403,8 +534,7 @@ def parse_command(
         "content": user_text
     })
 
-
-    # Save Gemini command
+    # Save the parsed command
     history.append({
         "role": "assistant",
         "content": json.dumps(
@@ -412,8 +542,7 @@ def parse_command(
         )
     })
 
-
-    return command, latency
+    return command, latency, stage
 
 
 # ============================================================
@@ -433,11 +562,9 @@ def navigate_to_room(
         f"Room {room_number}..."
     )
 
-
     node = GotoRoom(
         room_name
     )
-
 
     while (
         rclpy.ok()
@@ -449,16 +576,353 @@ def navigate_to_room(
             timeout_sec=0.1
         )
 
-
     success = (
         node.success
     )
 
-
     node.destroy_node()
 
-
     return success
+
+
+# ============================================================
+# ONE TURN: PARSE AND EXECUTE
+# ============================================================
+
+def _vision_stage(response, started):
+    return {
+        "model": response.model,
+        "latency_s": round(time.time() - started, 3),
+        "calls": 1 + response.retries,
+        "input_tokens": response.input_tokens,
+        "output_tokens": response.output_tokens,
+        "text": response.text,
+    }
+
+
+def run_approach_command(obj):
+    """Run the Task 4 approach controller; returns (reply, stage record)."""
+
+    from ee4705_perception.approach_robot import run_approach
+
+    enable_motion = os.getenv("TASK4_ENABLE_MOTION", "1") == "1"
+
+    started = time.time()
+
+    # Navigation is synchronous, so Nav2 has no active goal here and the
+    # approach controller is the only node commanding /cmd_vel.
+    result = run_approach(
+        obj,
+        get_grounding_client(),
+        enable_motion=enable_motion,
+        exclusive_control=enable_motion,
+        # Verified in Gazebo: the simulated LDS reports +inf for no return.
+        inf_is_clear=True,
+        evidence_dir=APPROACH_EVIDENCE_DIR,
+    )
+
+    stage = {
+        "success": result.visual_candidate,
+        "reason": result.reason,
+        "latency_s": round(time.time() - started, 3),
+        "calls": result.api_calls,
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "initially_visible": result.initially_visible,
+        "final_range_m": result.final_range_m,
+        "search_rotation_deg": round(result.search_rotation_deg, 1),
+        "evidence_dir": result.evidence_dir,
+        "model": getattr(get_grounding_client(), "model", ""),
+    }
+
+    return result.reply, stage
+
+
+def handle_turn(user_text):
+    """Parse and execute one user turn; returns the full turn record."""
+
+    command, latency, parse_stage = parse_command(
+        user_text
+    )
+
+    action = command.get(
+        "action"
+    )
+
+    turn = {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "user": user_text,
+        "command": command,
+        "parse": parse_stage,
+        "navigation": None,
+        "vision": None,
+        "approach": None,
+    }
+
+    navigation_success = None
+
+    # ------------------------------------------
+    # GOTO ROOM (then describe what is there)
+    # ------------------------------------------
+
+    if action == "goto_room":
+
+        room = command.get(
+            "room"
+        )
+
+        if (
+            not isinstance(
+                room,
+                int
+            )
+            or room < 1
+            or room > 6
+        ):
+
+            reply = (
+                "That room is invalid. "
+                "Please choose Room 1 "
+                "to Room 6."
+            )
+
+        else:
+
+            started = time.time()
+
+            success = navigate_to_room(
+                room
+            )
+
+            navigation_success = (
+                success
+            )
+
+            turn["navigation"] = {
+                "success": success,
+                "room": room,
+                "latency_s": round(time.time() - started, 3),
+            }
+
+            if success:
+
+                reply = (
+                    f"I have arrived "
+                    f"in Room {room}."
+                )
+
+                started = time.time()
+
+                try:
+
+                    print(
+                        "Robot: Looking around..."
+                    )
+
+                    vision_response = ask_current_view()
+                    turn["vision"] = _vision_stage(vision_response, started)
+
+                    if vision_response.text:
+                        reply += " " + vision_response.text
+
+                except Exception as error:
+
+                    print(
+                        f"[Vision error: {error}]"
+                    )
+
+                    turn["vision"] = {"error": str(error)[:300],
+                                      "latency_s": round(time.time() - started, 3)}
+
+            else:
+
+                reply = (
+                    f"Sorry, I could not "
+                    f"reach Room {room}."
+                )
+
+    # ------------------------------------------
+    # DESCRIBE CURRENT CAMERA VIEW
+    # ------------------------------------------
+
+    elif action == "describe":
+
+        started = time.time()
+
+        try:
+
+            print(
+                "Robot: Capturing the current "
+                "camera view..."
+            )
+
+            vision_response = ask_current_view()
+            turn["vision"] = _vision_stage(vision_response, started)
+
+            reply = (
+                vision_response.text
+                or
+                "The vision model returned "
+                "an empty description."
+            )
+
+        except Exception as error:
+
+            print(
+                f"[Vision error: {error}]"
+            )
+
+            turn["vision"] = {"error": str(error)[:300],
+                              "latency_s": round(time.time() - started, 3)}
+
+            reply = (
+                "Sorry, I could not describe "
+                "the current camera view."
+            )
+
+    # ------------------------------------------
+    # VISUAL QUESTION
+    # ------------------------------------------
+
+    elif action == "visual_question":
+
+        question = command.get(
+            "question",
+            user_text,
+        )
+
+        started = time.time()
+
+        try:
+
+            print(
+                "Robot: Checking the current "
+                "camera view..."
+            )
+
+            vision_response = ask_current_view(
+                question
+            )
+            turn["vision"] = _vision_stage(vision_response, started)
+
+            reply = (
+                vision_response.text
+                or
+                "The vision model returned "
+                "an empty answer."
+            )
+
+        except Exception as error:
+
+            print(
+                f"[Vision error: {error}]"
+            )
+
+            turn["vision"] = {"error": str(error)[:300],
+                              "latency_s": round(time.time() - started, 3)}
+
+            reply = (
+                "Sorry, I could not answer "
+                "that visual question."
+            )
+
+    # ------------------------------------------
+    # APPROACH AN OBJECT
+    # ------------------------------------------
+
+    elif action == "approach":
+
+        obj = command.get(
+            "object"
+        )
+
+        if not isinstance(obj, str) or not obj.strip():
+
+            reply = "Which object should I approach?"
+
+        else:
+
+            print(
+                f"Robot: Looking for the {obj.strip()}..."
+            )
+
+            try:
+
+                reply, turn["approach"] = run_approach_command(
+                    obj.strip()
+                )
+
+            except Exception as error:
+
+                print(
+                    f"[Approach error: {error}]"
+                )
+
+                turn["approach"] = {"success": False, "reason": "start_error",
+                                    "error": str(error)[:300]}
+
+                reply = (
+                    f"Sorry, I could not start "
+                    f"approaching the {obj.strip()}."
+                )
+
+    # ------------------------------------------
+    # STOP
+    # ------------------------------------------
+
+    elif action == "stop":
+
+        # Commands run to completion before the next input is read, so
+        # nothing is moving when a typed stop arrives.
+        reply = (
+            "I have stopped and am not moving."
+        )
+
+    # ------------------------------------------
+    # CHAT / CLARIFICATION
+    # ------------------------------------------
+
+    elif action == "chat":
+
+        reply = command.get(
+            "reply",
+            "Could you clarify "
+            "your request?"
+        )
+
+    # ------------------------------------------
+    # UNKNOWN ACTION
+    # ------------------------------------------
+
+    else:
+
+        reply = (
+            "I could not determine "
+            "the requested action. "
+            "Please try again."
+        )
+
+    turn["reply"] = reply
+
+    log_interaction(
+        user_text=user_text,
+        command=command,
+        reply=reply,
+        latency=latency,
+        navigation_success=(
+            navigation_success
+        )
+    )
+
+    log_turn(turn)
+
+    # Save the actual robot reply so follow-ups can refer to it.
+    history.append({
+        "role": "assistant",
+        "content": reply
+    })
+
+    return turn
 
 
 # ============================================================
@@ -468,7 +932,6 @@ def navigate_to_room(
 def main():
 
     rclpy.init()
-
 
     print("")
     print(
@@ -489,7 +952,6 @@ def main():
     )
     print("")
 
-
     while rclpy.ok():
 
         try:
@@ -509,11 +971,9 @@ def main():
 
             break
 
-
         if not user_text:
 
             continue
-
 
         if user_text.lower() in [
             "exit",
@@ -526,286 +986,45 @@ def main():
 
             break
 
-
-        # ------------------------------------------
-        # Parse natural language
-        # ------------------------------------------
-
-        command, latency = parse_command(
+        turn = handle_turn(
             user_text
         )
 
-
-        action = command.get(
-            "action"
-        )
-
-
-        navigation_success = None
-        vision_model = None
-        vision_latency = None
-
-
         # ------------------------------------------
-        # GOTO ROOM
-        # ------------------------------------------
-
-        if action == "goto_room":
-
-            room = command.get(
-                "room"
-            )
-
-
-            if (
-                not isinstance(
-                    room,
-                    int
-                )
-                or room < 1
-                or room > 6
-            ):
-
-                reply = (
-                    "That room is invalid. "
-                    "Please choose Room 1 "
-                    "to Room 6."
-                )
-
-
-            else:
-
-                success = navigate_to_room(
-                    room
-                )
-
-                navigation_success = (
-                    success
-                )
-
-
-                if success:
-
-                    reply = (
-                        f"I have arrived "
-                        f"in Room {room}."
-                    )
-
-
-                else:
-
-                    reply = (
-                        f"Sorry, I could not "
-                        f"reach Room {room}."
-                    )
-
-
-        # ------------------------------------------
-        # DESCRIBE
-        # Task 3 integration later
-        # ------------------------------------------
-
-        # ------------------------------------------
-        # DESCRIBE CURRENT CAMERA VIEW
-        # ------------------------------------------
-
-        elif action == "describe":
-
-            try:
-
-                print(
-                    "Robot: Capturing the current "
-                    "camera view..."
-                )
-
-                vision_response = ask_current_view()
-
-                reply = (
-                    vision_response.text
-                    or
-                    "The vision model returned "
-                    "an empty description."
-                )
-
-                vision_model = (
-                    vision_response.model
-                )
-
-                vision_latency = (
-                    vision_response.latency_s
-                )
-
-            except Exception as error:
-
-                print(
-                    f"[Vision error: {error}]"
-                )
-
-                reply = (
-                    "Sorry, I could not describe "
-                    "the current camera view."
-                )
-
-
-        # ------------------------------------------
-        # VISUAL QUESTION
-        # ------------------------------------------
-
-        elif action == "visual_question":
-
-            question = command.get(
-                "question",
-                user_text,
-            )
-
-            try:
-
-                print(
-                    "Robot: Checking the current "
-                    "camera view..."
-                )
-
-                vision_response = ask_current_view(
-                    question
-                )
-
-                reply = (
-                    vision_response.text
-                    or
-                    "The vision model returned "
-                    "an empty answer."
-                )
-
-                vision_model = (
-                    vision_response.model
-                )
-
-                vision_latency = (
-                    vision_response.latency_s
-                )
-
-            except Exception as error:
-
-                print(
-                    f"[Vision error: {error}]"
-                )
-
-                reply = (
-                    "Sorry, I could not answer "
-                    "that visual question."
-                )
-
-        # ------------------------------------------
-        # APPROACH
-        # Task 4 integration later
-        # ------------------------------------------
-
-        elif action == "approach":
-
-            obj = command.get(
-                "object",
-                "object"
-            )
-
-
-            reply = (
-                f"The command to approach "
-                f"the {obj} was understood, "
-                "but the object approach controller "
-                "is not connected yet."
-            )
-
-
-        # ------------------------------------------
-        # STOP
-        # ------------------------------------------
-
-        elif action == "stop":
-
-            reply = (
-                "Stopped."
-            )
-
-
-        # ------------------------------------------
-        # CHAT / CLARIFICATION
-        # ------------------------------------------
-
-        elif action == "chat":
-
-            reply = command.get(
-                "reply",
-                "Could you clarify "
-                "your request?"
-            )
-
-
-        # ------------------------------------------
-        # UNKNOWN ACTION
-        # ------------------------------------------
-
-        else:
-
-            reply = (
-                "I could not determine "
-                "the requested action. "
-                "Please try again."
-            )
-
-
-                # ------------------------------------------
         # DISPLAY FINAL RESPONSE AND TIMING
         # ------------------------------------------
 
         print(
-            f"Robot: {reply}"
+            f"Robot: {turn['reply']}"
         )
 
         print(
-            f"[Parser latency: "
-            f"{latency:.2f} s]"
+            f"[Parser: {turn['parse'].get('model', 'failed')}, "
+            f"{turn['parse']['latency_s']:.2f} s]"
         )
 
-        if vision_model is not None:
+        if turn["navigation"]:
 
             print(
-                f"[Vision model: "
-                f"{vision_model}]"
+                f"[Navigation: {turn['navigation']['latency_s']:.1f} s]"
             )
 
-        if vision_latency is not None:
+        if turn["vision"] and "model" in turn["vision"]:
 
             print(
-                f"[Vision latency: "
-                f"{vision_latency:.2f} s]"
+                f"[Vision: {turn['vision']['model']}, "
+                f"{turn['vision']['latency_s']:.2f} s]"
+            )
+
+        if turn["approach"] and "latency_s" in turn["approach"]:
+
+            print(
+                f"[Approach: {turn['approach']['reason']}, "
+                f"{turn['approach']['calls']} VLM calls, "
+                f"{turn['approach']['latency_s']:.1f} s]"
             )
 
         print("")
-
-        # ------------------------------------------
-        # LOG INTERACTION
-        # ------------------------------------------
-
-        log_interaction(
-            user_text=user_text,
-            command=command,
-            reply=reply,
-            latency=latency,
-            navigation_success=(
-                navigation_success
-            )
-        )
-
-
-        # ------------------------------------------
-        # SAVE ACTUAL ROBOT REPLY TO HISTORY
-        # ------------------------------------------
-
-        history.append({
-            "role": "assistant",
-            "content": reply
-        })
-
 
     if rclpy.ok():
         rclpy.shutdown()

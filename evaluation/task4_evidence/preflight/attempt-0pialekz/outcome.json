@@ -1,0 +1,13 @@
+{
+  "reason": "observation_only",
+  "api_calls": 1,
+  "elapsed_s": 4.312531401999877,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": false,
+  "target": "fire hydrant",
+  "initially_visible": true,
+  "final_range_m": 11.522415450111804,
+  "evidence_dir": "evaluation/task4_evidence/preflight/attempt-0pialekz",
+  "input_tokens": 491,
+  "output_tokens": 37
+}

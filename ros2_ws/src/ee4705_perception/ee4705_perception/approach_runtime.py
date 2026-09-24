@@ -22,12 +22,27 @@ class ApproachOutcome:
     elapsed_s: float
     search_rotation_deg: float
     visual_candidate: bool = False
+    target: str = "object"
+    initially_visible: bool | None = None
+    final_range_m: float | None = None
+    evidence_dir: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
 
     @property
     def reply(self):
         if self.visual_candidate:
-            return "I stopped near the visible target. Final distance still needs verification."
-        return f"Approach stopped: {self.reason.replace('_', ' ')}."
+            return f"I am now next to the {self.target}."
+        if self.reason == "observation_only":
+            return f"I checked the camera for the {self.target} without moving."
+        if self.reason == "object_not_found_search_limit":
+            return (f"Sorry, I could not find the {self.target} "
+                    "after turning a full circle.")
+        if self.reason in ("obstacle", "path_blocked", "obstacle_during_turn"):
+            return (f"Sorry, I stopped because something is blocking "
+                    f"the way to the {self.target}.")
+        return (f"Sorry, I could not reach the {self.target} "
+                f"({self.reason.replace('_', ' ')}).")
 
 
 def stamp_seconds(stamp):
@@ -85,6 +100,77 @@ def scan_clearance(ranges, angle_min, angle_increment, range_min, range_max,
                           or max(angles) < math.radians(25)):
         return None
     return min(selected)
+
+
+def _scan_rays(ranges, angle_min, angle_increment, range_min, range_max, inf_is_clear):
+    """Yield (angle, range) per ray; None ranges mark invalid rays.
+
+    With inf_is_clear, +inf (no return within range_max) becomes math.inf so
+    callers can tell "nothing there" from a real return.
+    """
+    for i, value in enumerate(ranges):
+        angle = math.atan2(math.sin(angle_min + i*angle_increment),
+                           math.cos(angle_min + i*angle_increment))
+        if value == math.inf and inf_is_clear:
+            yield angle, math.inf
+        elif not math.isfinite(value) or value < 0 or value > range_max:
+            yield angle, None
+        elif value < range_min:
+            yield angle, 0.0  # A too-near return counts as blocked.
+        else:
+            yield angle, value
+
+
+def _scan_valid(ranges, angle_min, angle_increment, range_min, range_max):
+    return bool(ranges) and all(math.isfinite(v) for v in (
+        angle_min, angle_increment, range_min, range_max
+    )) and angle_increment != 0 and 0 <= range_min < range_max
+
+
+def range_at_bearing(ranges, angle_min, angle_increment, range_min, range_max,
+                     *, bearing, half_window, inf_is_clear=False):
+    """Nearest return within +/- half_window of a bearing (laser frame).
+
+    Returns math.inf when every ray in the window is clear, and None when the
+    window contains an invalid ray or no ray at all.
+    """
+    if not _scan_valid(ranges, angle_min, angle_increment, range_min, range_max):
+        return None
+    nearest = None
+    for angle, value in _scan_rays(ranges, angle_min, angle_increment,
+                                   range_min, range_max, inf_is_clear):
+        offset = math.atan2(math.sin(angle - bearing), math.cos(angle - bearing))
+        if abs(offset) > half_window:
+            continue
+        if value is None:
+            return None
+        nearest = value if nearest is None else min(nearest, value)
+    return nearest
+
+
+def corridor_clearance(ranges, angle_min, angle_increment, range_min, range_max,
+                       *, half_width, inf_is_clear=False):
+    """Forward distance (laser frame) to the nearest return in the robot's path.
+
+    The path is the strip |y| <= half_width ahead of the laser. Unlike a fixed
+    angular sector, this ignores side walls the robot will pass, and still
+    catches a narrow object straight ahead. Returns math.inf when the strip is
+    clear and None when an invalid ray could hide an obstacle in it.
+    """
+    if not _scan_valid(ranges, angle_min, angle_increment, range_min, range_max):
+        return None
+    nearest = math.inf
+    for angle, value in _scan_rays(ranges, angle_min, angle_increment,
+                                   range_min, range_max, inf_is_clear):
+        if abs(angle) >= math.pi / 2:
+            continue
+        if value is None:
+            return None
+        if value == math.inf:
+            continue
+        if abs(value * math.sin(angle)) <= half_width:
+            nearest = min(nearest, value * math.cos(angle))
+    return nearest
 
 
 def wait_for_grounding(call, *, poll, stop, now, timeout_s):

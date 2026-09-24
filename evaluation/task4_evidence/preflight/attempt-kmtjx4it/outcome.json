@@ -1,0 +1,13 @@
+{
+  "reason": "sensor_missing_invalid_or_stale",
+  "api_calls": 6,
+  "elapsed_s": 28.012766165000357,
+  "search_rotation_deg": 217.43015328314212,
+  "visual_candidate": false,
+  "target": "car wheel",
+  "initially_visible": false,
+  "final_range_m": null,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/preflight/attempt-kmtjx4it",
+  "input_tokens": 2940,
+  "output_tokens": 108
+}

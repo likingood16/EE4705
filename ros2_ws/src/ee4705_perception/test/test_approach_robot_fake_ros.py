@@ -28,6 +28,7 @@ class Transport:
         self.t = 100.0
         self.yaw = 0.0
         self.x = 0.0
+        self.y = 0.0
         self.node = None
         self.published = []
         self.last = (0.0, 0.0)
@@ -38,6 +39,8 @@ class Transport:
         self.fail_image = False
         self.api_active = False
         self.motion_during_api = False
+        self.target_distance = 2.0  # target at world (2, 0); robot starts facing it
+        self.side_obstacle = False  # something in the path, off the target bearing
         self.hook = lambda: None
 
     def modules(self):
@@ -54,7 +57,7 @@ class Transport:
                 transport.last = value
                 transport.published.append(value)
         class Node:
-            def __init__(self, name):
+            def __init__(self, name, **kwargs):
                 transport.node = self
                 self.callbacks = {}
             def create_publisher(self, *args):
@@ -66,7 +69,8 @@ class Transport:
             def get_clock(self):
                 return NS(now=lambda: NS(nanoseconds=int(transport.t*1e9)))
             def get_logger(self):
-                return NS(info=lambda *a: None, error=lambda *a: None)
+                return NS(info=lambda *a: None, warning=lambda *a: None,
+                          error=lambda *a: None)
             def destroy_node(self):
                 pass
         def save(path, frame):
@@ -76,16 +80,22 @@ class Transport:
             return True
         modules = {}
         for name in ("rclpy", "rclpy.node", "rclpy.qos", "cv_bridge", "cv2",
-                     "geometry_msgs", "geometry_msgs.msg", "nav_msgs", "nav_msgs.msg",
+                     "rclpy.parameter", "geometry_msgs", "geometry_msgs.msg",
+                     "nav_msgs", "nav_msgs.msg",
                      "sensor_msgs", "sensor_msgs.msg", "std_srvs", "std_srvs.srv"):
             modules[name] = types.ModuleType(name)
         modules["rclpy"].ok = lambda: True
         modules["rclpy"].spin_once = lambda node, timeout_sec: self.spin()
         modules["rclpy.node"].Node = Node
         modules["rclpy.qos"].qos_profile_sensor_data = object()
+        modules["rclpy.qos"].QoSProfile = lambda **kwargs: object()
+        modules["rclpy.qos"].ReliabilityPolicy = NS(RELIABLE="reliable")
+        modules["rclpy.parameter"].Parameter = lambda *a, **kwargs: None
         modules["cv_bridge"].CvBridge = lambda: NS(imgmsg_to_cv2=lambda *a: FakeFrame())
         modules["cv2"].imwrite = save
         modules["cv2"].rectangle = lambda *a: None
+        modules["cv2"].putText = lambda *a: None
+        modules["cv2"].FONT_HERSHEY_SIMPLEX = 0
         modules["geometry_msgs.msg"].Twist = Twist
         modules["nav_msgs.msg"].Odometry = object
         modules["sensor_msgs.msg"].Image = object
@@ -93,9 +103,18 @@ class Transport:
         modules["std_srvs.srv"].Trigger = object
         return modules
 
+    def target_view(self):
+        """Laser-frame range and bearing to the target at world (target_distance, 0)."""
+        scan_x = self.x - 0.064*math.cos(self.yaw)
+        scan_y = self.y - 0.064*math.sin(self.yaw)
+        dx, dy = self.target_distance - scan_x, -scan_y
+        bearing = math.atan2(dy, dx) - self.yaw
+        return math.hypot(dx, dy), math.atan2(math.sin(bearing), math.cos(bearing))
+
     def spin(self):
         self.t += 0.05
-        self.x += self.last[0]*0.05
+        self.x += self.last[0]*0.05*math.cos(self.yaw)
+        self.y += self.last[0]*0.05*math.sin(self.yaw)
         self.yaw += self.last[1]*0.05
         self.hook()
         if self.cancel:
@@ -105,24 +124,42 @@ class Transport:
         header = NS(stamp=NS(sec=sec, nanosec=int((stamp_t-sec)*1e9)))
         self.node.callbacks["/camera/image_raw"](NS(header=header))
         if not self.drop_scan:
+            ranges = [0.2 if self.obstacle else 3.0]*360
+            if not self.obstacle:
+                distance, bearing = self.target_view()
+                for i in range(-4, 5):
+                    ranges[(round(math.degrees(bearing)) + i) % 360] = max(0.13, distance)
+            if self.side_obstacle:
+                for i in range(22, 28):
+                    ranges[i] = 0.30  # in the robot's path, outside the target window
             self.node.callbacks["/scan"](NS(
-                header=header, ranges=[0.2 if self.obstacle else 2.0]*360,
+                header=header, ranges=ranges,
                 angle_min=0.0, angle_increment=math.pi/180,
                 range_min=0.1, range_max=5.0))
         self.node.callbacks["/odom"](NS(header=header, pose=NS(pose=NS(
             orientation=NS(x=0, y=0, z=math.sin(self.yaw/2), w=math.cos(self.yaw/2)),
-            position=NS(x=self.x, y=0.0)))))
+            position=NS(x=self.x, y=self.y)))))
         real_time.sleep(0.0001)  # Allow the API worker to run.
 
 
 class Client:
-    model = "fake-gemini"
+    """Fake VLM: "auto" boxes the target where the camera would see it."""
+    model = "fake-vlm"
     def __init__(self, transport, responses=None):
         self.transport = transport
-        self.responses = iter(responses or ["forward"])
+        self.responses = iter(responses or [])
         self.calls = 0
         self.release = None
         self.error = False
+    def box(self):
+        distance, bearing = self.transport.target_view()
+        if abs(bearing) > 0.5:
+            return None
+        focal = 320 / math.tan(1.085595 / 2)
+        cx = 320 - focal*math.tan(bearing)
+        bottom = min(479, 240 + 0.103*focal/max(0.05, distance - 0.14))
+        return [max(0, round((cx-40)/0.64)), 300, min(1000, round((cx+40)/0.64)),
+                round(bottom/0.48)]
     def ask(self, path, prompt):
         self.calls += 1
         self.transport.api_active = True
@@ -131,10 +168,9 @@ class Client:
                 self.release.wait(2)
             if self.error:
                 raise RuntimeError("mock API error")
-            kind = next(self.responses, "forward")
-            data = {"found": kind != "missing", "label": "cup",
-                    "bbox": None if kind == "missing" else
-                    ([350, 100, 650, 800] if kind == "close" else [400, 200, 600, 500])}
+            kind = next(self.responses, "auto")
+            bbox = None if kind == "missing" else self.box()
+            data = {"found": bbox is not None, "label": "cup", "bbox": bbox}
             return VLMResponse(json.dumps(data), self.model, 0.1)
         finally:
             self.transport.api_active = False
@@ -166,11 +202,16 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_attempt(enable_motion=True)
 
-    def test_move_then_candidate_stops_without_certified_success(self):
-        self.client = Client(self.transport, ["forward", "close"])
-        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+    def test_approach_stops_at_arrival_range(self):
+        self.transport.target_distance = 3.0
+        result = self.run_attempt(enable_motion=True, exclusive_control=True, inf_is_clear=True)
+        self.assertEqual(result.reason, "arrived")
         self.assertTrue(result.visual_candidate)
-        self.assertTrue(any(v[0] > 0 for v in self.transport.published))
+        self.assertEqual(result.reply, "I am now next to the cup.")
+        self.assertTrue(result.initially_visible)
+        distance, _ = self.transport.target_view()
+        self.assertTrue(0.40 <= distance <= 0.62, distance)
+        self.assertLessEqual(self.client.calls, 5)
         self.assertEqual(self.transport.published[-1], (0, 0))
         self.assertFalse(self.transport.motion_during_api)
         import csv
@@ -180,13 +221,39 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(row["approach_success"], "")
         self.assertEqual(row["final_distance_m"], "")
 
-    def test_obstacle_interrupts_pulse(self):
-        self.transport.hook = lambda: setattr(self.transport, "obstacle", self.transport.last[0] > 0)
+    def test_turns_towards_offset_target(self):
+        self.transport.yaw = math.radians(20)  # target 20 degrees to the right
         result = self.run_attempt(enable_motion=True, exclusive_control=True)
-        self.assertEqual(result.reason, "obstacle")
+        self.assertEqual(result.reason, "arrived")
+        first = next(v for v in self.transport.published if v != (0, 0))
+        self.assertLess(first[1], 0)  # first command turns right
+        self.assertEqual(first[0], 0)  # without driving forward
+
+    def test_search_finds_target_that_was_behind(self):
+        self.transport.yaw = math.pi  # facing away from the target
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+        self.assertEqual(result.reason, "arrived")
+        self.assertFalse(result.initially_visible)
+        distance, _ = self.transport.target_view()
+        self.assertLess(distance, 0.62)
+
+    def test_obstacle_during_turn_stops(self):
+        self.transport.yaw = math.radians(30)
+        self.transport.hook = lambda: setattr(
+            self.transport, "obstacle", self.transport.last[1] != 0)
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+        self.assertEqual(result.reason, "obstacle_during_turn")
+        self.assertEqual(self.transport.published[-1], (0, 0))
+        self.assertTrue(result.reply.startswith("Sorry, I stopped because"))
+
+    def test_obstacle_in_path_stops_before_it(self):
+        self.transport.side_obstacle = True
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
+        self.assertEqual(result.reason, "path_blocked")
+        self.assertFalse(any(v[0] > 0 for v in self.transport.published))
         self.assertEqual(self.transport.published[-1], (0, 0))
 
-    def test_stale_scan_interrupts_pulse(self):
+    def test_stale_scan_interrupts_drive(self):
         def hook():
             if self.transport.last[0] > 0:
                 self.transport.drop_scan = True
@@ -221,6 +288,7 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(self.transport.published[-1], (0, 0))
 
     def test_call_limit_stops(self):
+        self.transport.target_distance = 4.5
         result = self.run_attempt(enable_motion=True, exclusive_control=True, max_calls=1)
         self.assertEqual(result.reason, "api_call_limit")
         self.assertEqual(self.client.calls, 1)
@@ -244,8 +312,10 @@ class AdapterTests(unittest.TestCase):
 
     def test_full_turn_search_stops(self):
         self.client = Client(self.transport, ["missing"]*50)
-        result = self.run_attempt(enable_motion=True, exclusive_control=True, max_calls=40)
+        result = self.run_attempt(enable_motion=True, exclusive_control=True)
         self.assertEqual(result.reason, "object_not_found_search_limit")
-        self.assertGreaterEqual(result.search_rotation_deg, 359.0)
-        self.assertLess(result.search_rotation_deg, 362.0)
+        self.assertGreaterEqual(result.search_rotation_deg, 350.0)
+        self.assertLess(result.search_rotation_deg, 370.0)
+        self.assertEqual(self.client.calls, 8)
+        self.assertIn("full circle", result.reply)
         self.assertEqual(self.transport.published[-1], (0, 0))

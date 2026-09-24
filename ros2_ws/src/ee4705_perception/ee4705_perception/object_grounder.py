@@ -42,6 +42,9 @@ class GroundingResult:
     latency_s: float
     cost_usd: float | None
     raw_text: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    retries: int = 0
 
 
 def extract_json_object(text: str) -> dict:
@@ -132,6 +135,9 @@ class ObjectGrounder:
             latency_s=response.latency_s,
             cost_usd=response.cost_usd,
             raw_text=response.text,
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            retries=getattr(response, "retries", 0),
         )
 
 

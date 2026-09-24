@@ -103,7 +103,15 @@ class GotoRoom(Node):
             "Waiting for Nav2 action server..."
         )
 
-        self.client.wait_for_server()
+        if not self.client.wait_for_server(timeout_sec=20.0):
+
+            self.get_logger().error(
+                "Nav2 action server is not available"
+            )
+
+            self.finished = True
+            self.success = False
+            return
 
 
         self.goal_future = self.client.send_goal_async(

@@ -93,3 +93,76 @@ def decide_approach_action(
         return ApproachAction.TURN_RIGHT
 
     return ApproachAction.MOVE_FORWARD
+
+class StepKind(str, Enum):
+    """What the controller does after one grounding query."""
+
+    ARRIVED = "arrived"
+    ADVANCE = "advance"
+    SEARCH = "search"
+
+
+@dataclass(frozen=True)
+class StepConfig:
+    """Bearing-and-range approach settings for the Waffle Pi in Gazebo.
+
+    Ranges are laser ranges; the bumper is 0.13 m ahead of the laser, so
+    arrival_range_m = 0.55 leaves roughly 0.4 m between bumper and object.
+    """
+
+    arrival_range_m: float = 0.55
+    arrival_bearing_rad: float = math.radians(10)
+    align_tolerance_rad: float = math.radians(3)
+    max_step_m: float = 1.2
+    unknown_range_step_m: float = 0.6
+    search_step_rad: float = math.radians(45)
+
+    def __post_init__(self):
+        values = (self.arrival_range_m, self.arrival_bearing_rad,
+                  self.align_tolerance_rad, self.max_step_m,
+                  self.unknown_range_step_m, self.search_step_rad)
+        if not all(math.isfinite(v) and v > 0 for v in values):
+            raise ValueError("Step settings must be positive and finite.")
+
+
+@dataclass(frozen=True)
+class ApproachStep:
+    """One planned move: turn by turn_rad, then drive forward_m."""
+
+    kind: StepKind
+    turn_rad: float = 0.0
+    forward_m: float = 0.0
+
+
+def plan_step(
+    *,
+    target_found: bool,
+    bearing_rad: float | None,
+    target_range_m: float | None,
+    config: StepConfig = StepConfig(),
+) -> ApproachStep:
+    """Choose the next move from one grounding result.
+
+    target_range_m is the laser-frame range to the target, or None when it
+    could not be measured (then the robot only takes a short step).
+    """
+
+    if not target_found:
+        return ApproachStep(StepKind.SEARCH, turn_rad=config.search_step_rad)
+
+    if bearing_rad is None or not math.isfinite(bearing_rad):
+        raise ValueError("A visible target requires a finite bearing.")
+
+    turn = bearing_rad if abs(bearing_rad) > config.align_tolerance_rad else 0.0
+
+    if target_range_m is not None and target_range_m <= config.arrival_range_m + 0.05:
+        if abs(bearing_rad) <= config.arrival_bearing_rad:
+            return ApproachStep(StepKind.ARRIVED, turn_rad=turn)
+        # Close but off-centre: turn to face it, then look again.
+        return ApproachStep(StepKind.ADVANCE, turn_rad=turn)
+
+    if target_range_m is None:
+        forward = config.unknown_range_step_m
+    else:
+        forward = min(config.max_step_m, target_range_m - config.arrival_range_m)
+    return ApproachStep(StepKind.ADVANCE, turn_rad=turn, forward_m=max(0.0, forward))
