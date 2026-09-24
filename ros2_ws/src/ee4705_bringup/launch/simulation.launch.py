@@ -113,6 +113,16 @@ def generate_launch_description() -> LaunchDescription:
         ],
     )
 
+    # Feeds the local costmap scans whose transform is already in TF (see
+    # scan_relay.py and change 5 in the Nav2 YAML).
+    scan_relay = Node(
+        package="ee4705_bringup",
+        executable="scan_relay",
+        name="ee4705_scan_relay",
+        output="screen",
+        parameters=[{"use_sim_time": True}],
+    )
+
     set_initial_pose = Node(
         package="ee4705_bringup",
         executable="initial_pose_setter",
@@ -172,6 +182,7 @@ def generate_launch_description() -> LaunchDescription:
             start_gazebo,
             start_robot_state_publisher,
             map_to_odom,
+            scan_relay,
             start_navigation,
             TimerAction(
                 period=5.0,

@@ -1,8 +1,10 @@
 """Shared helpers for simulation experiments.
 
-Ground truth comes from Gazebo itself (`gz model -p`), which is independent of
-ROS, TF and Nav2, so it can be used to check localisation and to measure the
-final robot-to-object distance.
+Ground truth comes from Gazebo itself through the gazebo_ros_state world
+plugin (/gazebo/get_entity_state), which is independent of TF and Nav2, so it
+can be used to check localisation and to measure the final robot-to-object
+distance. (The gz CLI was used first, but killing a timed-out gz client
+crashed gzserver.)
 
 One long-lived `SimProbe` node is used per experiment instead of many
 short-lived `ros2` CLI processes.
@@ -11,7 +13,6 @@ short-lived `ros2` CLI processes.
 from __future__ import annotations
 
 import math
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,24 +36,53 @@ class Pose2D:
         return {"x": round(self.x, 3), "y": round(self.y, 3), "yaw": round(self.yaw, 3)}
 
 
-def gz_model_pose(model: str, timeout_s: float = 10.0) -> Pose2D:
-    """Return a Gazebo model's world pose (x, y, yaw) via Gazebo transport."""
+class _GazeboState:
+    """Clients for the gazebo_ros_state services, on a private node."""
 
-    for attempt in range(3):
-        try:
-            output = subprocess.run(
-                ["gz", "model", "-m", model, "-p"],
-                capture_output=True, text=True, timeout=timeout_s, check=True,
-            ).stdout.split()
-            break
-        except subprocess.TimeoutExpired:
-            # gz can be slow to answer while Gazebo is heavily loaded.
-            if attempt == 2:
-                raise
-    if len(output) != 6:
-        raise RuntimeError(f"Unexpected gz output for {model!r}: {output}")
-    x, y, _z, _roll, _pitch, yaw = (float(value) for value in output)
-    return Pose2D(x, y, yaw)
+    def __init__(self) -> None:
+        import rclpy
+        from gazebo_msgs.srv import GetEntityState, SetEntityState
+
+        if not rclpy.ok():
+            rclpy.init()
+        self._rclpy = rclpy
+        self.node = rclpy.create_node("ee4705_gazebo_state")
+        self.get_client = self.node.create_client(GetEntityState, "/gazebo/get_entity_state")
+        self.set_client = self.node.create_client(SetEntityState, "/gazebo/set_entity_state")
+        self._Get, self._Set = GetEntityState, SetEntityState
+
+    def call(self, client, request, timeout_s: float = 10.0):
+        if not client.wait_for_service(timeout_sec=timeout_s):
+            raise RuntimeError(f"{client.srv_name} is not available (is the simulation running?)")
+        future = client.call_async(request)
+        self._rclpy.spin_until_future_complete(self.node, future, timeout_sec=timeout_s)
+        if future.result() is None:
+            raise RuntimeError(f"{client.srv_name} did not answer")
+        return future.result()
+
+
+_gazebo: _GazeboState | None = None
+
+
+def _state() -> _GazeboState:
+    global _gazebo
+    if _gazebo is None:
+        _gazebo = _GazeboState()
+    return _gazebo
+
+
+def gazebo_pose(entity: str) -> Pose2D:
+    """World pose of a model ("waffle_pi") or link ("ragdoll::hip")."""
+
+    state = _state()
+    request = state._Get.Request()
+    request.name = entity
+    request.reference_frame = "world"
+    response = state.call(state.get_client, request)
+    if not response.success:
+        raise RuntimeError(f"Gazebo has no entity {entity!r}")
+    p, q = response.state.pose.position, response.state.pose.orientation
+    return Pose2D(p.x, p.y, math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z)))
 
 
 def world_to_map(pose: Pose2D) -> Pose2D:
@@ -73,19 +103,23 @@ def angle_diff(a: float, b: float) -> float:
     return math.atan2(math.sin(a - b), math.cos(a - b))
 
 
-def set_robot_world_pose(pose: Pose2D, model: str = "waffle_pi") -> None:
-    """Teleport the robot in Gazebo (used only to set trial start poses).
+def set_gazebo_pose(pose: Pose2D, entity: str = "waffle_pi") -> None:
+    """Teleport a model in Gazebo (used only to set trial start poses).
 
     Odometry follows automatically because the diff-drive plugin reports the
     true world pose, and map->odom is a fixed transform.
     """
 
-    subprocess.run(
-        ["gz", "model", "-m", model,
-         "-x", f"{pose.x}", "-y", f"{pose.y}", "-z", "0.0",
-         "-R", "0", "-P", "0", "-Y", f"{pose.yaw}"],
-        capture_output=True, text=True, timeout=5.0, check=True,
-    )
+    state = _state()
+    request = state._Set.Request()
+    request.state.name = entity
+    request.state.reference_frame = "world"
+    request.state.pose.position.x = pose.x
+    request.state.pose.position.y = pose.y
+    request.state.pose.orientation.z = math.sin(pose.yaw / 2)
+    request.state.pose.orientation.w = math.cos(pose.yaw / 2)
+    if not state.call(state.set_client, request).success:
+        raise RuntimeError(f"Could not move {entity!r}")
 
 
 class SimProbe:
@@ -146,7 +180,7 @@ class SimProbe:
     def localisation_report(self) -> dict:
         """Compare the costmap/TF robot pose with Gazebo ground truth (map frame)."""
 
-        truth = world_to_map(gz_model_pose("waffle_pi"))
+        truth = world_to_map(gazebo_pose("waffle_pi"))
         now = self.sim_now()
         report = {"truth_map": truth.as_dict(), "sim_time": round(now, 2)}
         glob = self.footprints.get("global_costmap")

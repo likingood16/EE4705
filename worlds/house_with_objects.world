@@ -1,5 +1,15 @@
 <sdf version='1.7'>
   <world name='default'>
+    <!-- Ground truth for evaluation over ROS: /gazebo/get_entity_state and
+         /gazebo/set_entity_state. Querying Gazebo with the gz CLI instead
+         crashed gzserver (transport Connection assertion) when a timed-out
+         gz client was killed. -->
+    <plugin name='gazebo_ros_state' filename='libgazebo_ros_state.so'>
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+      <update_rate>1.0</update_rate>
+    </plugin>
     <model name='ground_plane'>
       <static>1</static>
       <link name='link'>

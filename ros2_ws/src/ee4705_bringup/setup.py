@@ -24,6 +24,7 @@ setup(
         "console_scripts": [
             "system_check = ee4705_bringup.system_check:main",
             "initial_pose_setter = ee4705_bringup.initial_pose_setter:main",
+            "scan_relay = ee4705_bringup.scan_relay:main",
         ],
     },
 )

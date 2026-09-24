@@ -22,6 +22,7 @@ import rclpy
 from google import genai
 from google.genai import types
 
+from ee4705_perception.back_away import back_away_if_blocked
 from ee4705_perception.camera_snapshot import capture_one_frame
 from ee4705_perception.goto_room import GotoRoom
 from ee4705_perception.scene_describer import SceneDescriber
@@ -77,9 +78,9 @@ CURRENT_CAMERA_IMAGE.parent.mkdir(
 # COMMAND-PARSER CONFIGURATION
 # ============================================================
 
-# Gemini is the parser evaluated in Task 2. When it is unavailable (503/504
-# overload errors were frequent during testing), the same prompt is sent to
-# a Qwen text model so a turn is not lost.
+# Gemini is the parser evaluated in Task 2. When the primary parser fails
+# (Gemini returned frequent 503/504 overload errors during testing), the same
+# prompt is sent to the other provider so a turn is not lost.
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
     "gemini-3.5-flash-lite",
@@ -89,6 +90,9 @@ QWEN_PARSER_MODEL = os.getenv(
     "QWEN_PARSER_MODEL",
     "qwen-plus",
 )
+
+# Primary parser ("gemini" or "qwen"); the other one is the fallback.
+PARSER_PROVIDER = os.getenv("PARSER_PROVIDER", "gemini").strip().lower()
 
 PARSER_FALLBACK = os.getenv("PARSER_FALLBACK", "1") == "1"
 
@@ -471,10 +475,16 @@ def parse_command(
         user_text
     )
 
-    parsers = [("gemini", GEMINI_MODEL, _parse_with_gemini)]
+    parsers = [
+        ("gemini", GEMINI_MODEL, _parse_with_gemini),
+        ("qwen", QWEN_PARSER_MODEL, _parse_with_qwen),
+    ]
 
-    if PARSER_FALLBACK:
-        parsers.append(("qwen", QWEN_PARSER_MODEL, _parse_with_qwen))
+    if PARSER_PROVIDER == "qwen":
+        parsers.reverse()
+
+    if not PARSER_FALLBACK:
+        parsers = parsers[:1]
 
     stage = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "errors": []}
     command = None
@@ -561,6 +571,10 @@ def navigate_to_room(
         f"Robot: Navigating to "
         f"Room {room_number}..."
     )
+
+    # After an object approach the robot can be too close to the object
+    # for Nav2 to plan; back away first (see back_away.py).
+    back_away_if_blocked()
 
     node = GotoRoom(
         room_name

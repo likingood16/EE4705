@@ -27,6 +27,11 @@
 #
 # 4. local_costmap drops the voxel layer: with a 2D laser it duplicates the
 #    obstacle layer and adds a second scan MessageFilter.
+#
+# 5. local_costmap reads /scan_costmap, published by ee4705_bringup's
+#    scan_relay only once TF can transform each scan. The local costmap still
+#    froze the same way as in (3) after ~25 min, and a lifecycle reset hung,
+#    so its MessageFilter must never wait for TF (see scan_relay.py).
 
 amcl:
   ros__parameters:
@@ -219,7 +224,7 @@ local_costmap:
         enabled: True
         observation_sources: scan
         scan:
-          topic: /scan
+          topic: /scan_costmap  # EE4705 (5)
           max_obstacle_height: 2.0
           clearing: True
           marking: True
