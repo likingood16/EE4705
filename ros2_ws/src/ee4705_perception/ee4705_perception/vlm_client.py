@@ -11,6 +11,36 @@ from pathlib import Path
 from typing import Protocol
 
 
+TRANSIENT_ERROR_MARKERS = ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED",
+                           "overloaded", "high demand", "timed out", "Timeout",
+                           "500 INTERNAL", "502", "504", "DEADLINE_EXCEEDED",
+                           "Connection")
+
+
+def is_transient_error(error: Exception) -> bool:
+    """True for provider overload/rate-limit/network errors worth retrying."""
+
+    text = f"{type(error).__name__}: {error}"
+    return any(marker in text for marker in TRANSIENT_ERROR_MARKERS)
+
+
+def call_with_retries(call, *, attempts: int = 3, first_delay_s: float = 2.0):
+    """Run call(); retry transient provider errors with exponential backoff.
+
+    Returns (result, retries). Latency reported by callers includes the
+    retries, because that is what the user waits for.
+    """
+
+    for attempt in range(attempts):
+        try:
+            return call(), attempt
+        except Exception as error:
+            if attempt == attempts - 1 or not is_transient_error(error):
+                raise
+            time.sleep(first_delay_s * 2**attempt)
+    raise AssertionError("unreachable")
+
+
 @dataclass(frozen=True)
 class VLMResponse:
     """Normalized result returned by every supported VLM provider."""
@@ -21,6 +51,7 @@ class VLMResponse:
     input_tokens: int | None = None
     output_tokens: int | None = None
     cost_usd: float | None = None
+    retries: int = 0
 
 
 class VLMClient(Protocol):
@@ -91,7 +122,10 @@ class GeminiVLMClient:
                 "Install the dependencies from requirements.txt."
             ) from error
 
-        self._client = genai.Client(api_key=api_key)
+        self._client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=90_000),  # milliseconds
+        )
         self._types = types
 
         self.model = (
@@ -134,15 +168,17 @@ class GeminiVLMClient:
 
         started = time.perf_counter()
 
-        response = self._client.models.generate_content(
-            model=self.model,
-            contents=[
-                prompt,
-                image_part,
-            ],
-            config=self._types.GenerateContentConfig(
-                temperature=0,
-            ),
+        response, retries = call_with_retries(
+            lambda: self._client.models.generate_content(
+                model=self.model,
+                contents=[
+                    prompt,
+                    image_part,
+                ],
+                config=self._types.GenerateContentConfig(
+                    temperature=0,
+                ),
+            )
         )
 
         latency_s = time.perf_counter() - started
@@ -162,6 +198,7 @@ class GeminiVLMClient:
                 "candidates_token_count",
                 None,
             ),
+            retries=retries,
         )
 
 class OpenAICompatibleVLMClient:
@@ -189,7 +226,9 @@ class OpenAICompatibleVLMClient:
                 "The openai package is missing. Install it with: pip install openai"
             ) from error
 
-        client_options = {"api_key": api_key}
+        # Bounded, so a stalled request cannot hang the robot loop; transient
+        # failures are retried by call_with_retries instead of the SDK.
+        client_options = {"api_key": api_key, "timeout": 90.0, "max_retries": 0}
         if base_url:
             client_options["base_url"] = base_url
 
@@ -205,18 +244,20 @@ class OpenAICompatibleVLMClient:
             image_url["detail"] = self.image_detail
 
         started = time.perf_counter()
-        response = self._client.chat.completions.create(
-            model=self.model,
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": image_url},
-                    ],
-                }
-            ],
+        response, retries = call_with_retries(
+            lambda: self._client.chat.completions.create(
+                model=self.model,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": image_url},
+                        ],
+                    }
+                ],
+            )
         )
         latency_s = time.perf_counter() - started
         text = response.choices[0].message.content or ""
@@ -228,6 +269,7 @@ class OpenAICompatibleVLMClient:
             latency_s=latency_s,
             input_tokens=getattr(usage, "prompt_tokens", None),
             output_tokens=getattr(usage, "completion_tokens", None),
+            retries=retries,
         )
 class QwenVLMClient(OpenAICompatibleVLMClient):
     """Qwen vision client using Alibaba's OpenAI-compatible API."""

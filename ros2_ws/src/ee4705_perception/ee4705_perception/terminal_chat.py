@@ -16,6 +16,7 @@ from ee4705_perception.scene_describer import SceneDescriber
 from ee4705_perception.vlm_client import (
     GeminiVLMClient,
     QwenVLMClient,
+    call_with_retries,
 )
 
 
@@ -61,7 +62,8 @@ GEMINI_MODEL = os.getenv(
 )
 
 client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+    api_key=os.getenv("GEMINI_API_KEY"),
+    http_options=types.HttpOptions(timeout=90_000),  # milliseconds
 )
 
 
@@ -342,19 +344,22 @@ def parse_command(
 
     try:
 
-        response = client.models.generate_content(
+        # Retry transient overload errors (503 "high demand" was seen live).
+        response, _ = call_with_retries(
+            lambda: client.models.generate_content(
 
-            model=GEMINI_MODEL,
+                model=GEMINI_MODEL,
 
-            contents=prompt,
+                contents=prompt,
 
-            config=types.GenerateContentConfig(
+                config=types.GenerateContentConfig(
 
-                system_instruction=SYSTEM_PROMPT,
+                    system_instruction=SYSTEM_PROMPT,
 
-                response_mime_type="application/json",
+                    response_mime_type="application/json",
 
-                temperature=0.1
+                    temperature=0.1
+                )
             )
         )
 

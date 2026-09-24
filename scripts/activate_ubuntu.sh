@@ -23,6 +23,15 @@ if [[ ! -f "$VENV_ACTIVATE" ]]; then
   return 1
 fi
 
+# Fast DDS (the Humble default) stalled /tf delivery to Nav2 after a few
+# minutes of simulation, freezing the costmap robot pose. CycloneDDS does not.
+# Export it before anything ROS starts so every process and the ros2 daemon
+# use the same middleware.
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# Loopback-only transport with large fragments, so camera images are not
+# dropped (see config/cyclonedds.xml).
+export CYCLONEDDS_URI="file://$PROJECT_ROOT/config/cyclonedds.xml"
+
 # shellcheck disable=SC1090
 source "$ROS_SETUP"
 # shellcheck disable=SC1090
@@ -44,4 +53,4 @@ if [[ -f "$PROJECT_ROOT/ros2_ws/install/setup.bash" ]]; then
 fi
 
 cd "$PROJECT_ROOT" || return 1
-echo "EE4705 environment active: ROS=$ROS_DISTRO, robot=$TURTLEBOT3_MODEL, Python=$(python --version 2>&1)"
+echo "EE4705 environment active: ROS=$ROS_DISTRO, RMW=$RMW_IMPLEMENTATION, robot=$TURTLEBOT3_MODEL, Python=$(python --version 2>&1)"

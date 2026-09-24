@@ -9,7 +9,7 @@ from typing import Any
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import Image, LaserScan
 
 
@@ -37,7 +37,9 @@ class SystemCheck(Node):
                 Image,
                 topics["camera"],
                 self._mark_received("camera", topics["camera"]),
-                qos_profile_sensor_data,
+                # Best-effort images are lost to UDP fragment drops under
+                # CycloneDDS (see config/cyclonedds.xml); reliable is not.
+                QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE),
             ),
             self.create_subscription(
                 LaserScan,

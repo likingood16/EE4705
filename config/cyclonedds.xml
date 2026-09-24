@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CycloneDDS settings for running the whole simulation on one machine.
+
+  With the defaults, CycloneDDS splits each 640x480 camera image (~0.9 MB) into
+  ~700 UDP fragments of 1344 bytes. The kernel receive buffer (net.core.rmem_max
+  = 208 KB, which needs root to raise) overflows, and fewer than one image per
+  second arrives. Loopback has a 64 KB MTU, so using it with large fragments
+  sends each image as ~15 datagrams instead.
+
+  Loopback has no multicast, so participants discover each other by unicast to
+  localhost.
+
+  Even so, one image is ~15 datagrams and the 208 KB buffer holds only three,
+  so best-effort image readers still lose almost every frame. Camera
+  subscribers therefore use RELIABLE QoS, which retransmits lost fragments
+  (~25 Hz, Gazebo real-time factor unchanged). With root, raising the limit
+  (sudo sysctl -w net.core.rmem_max=8388608) would also let best-effort work.
+
+  MaxAutoParticipantIndex bounds the ports probed; each ROS process
+  is one participant, and the simulation plus tools use well under 100.
+-->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain Id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface name="lo" multicast="false"/>
+      </Interfaces>
+      <AllowMulticast>false</AllowMulticast>
+      <MaxMessageSize>65500B</MaxMessageSize>
+      <FragmentSize>65000B</FragmentSize>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
+      <Peers>
+        <Peer Address="localhost"/>
+      </Peers>
+    </Discovery>
+    <Internal>
+      <SocketReceiveBufferSize min="default"/>
+    </Internal>
+  </Domain>
+</CycloneDDS>

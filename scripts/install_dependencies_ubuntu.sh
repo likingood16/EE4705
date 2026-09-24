@@ -43,6 +43,7 @@ sudo apt-get install -y \
   "ros-$ROS_DISTRO-gazebo-ros-pkgs" \
   "ros-$ROS_DISTRO-nav2-bringup" \
   "ros-$ROS_DISTRO-nav2-simple-commander" \
+  "ros-$ROS_DISTRO-rmw-cyclonedds-cpp" \
   "ros-$ROS_DISTRO-rqt-image-view" \
   "ros-$ROS_DISTRO-turtlebot3-cartographer" \
   "ros-$ROS_DISTRO-turtlebot3-gazebo" \

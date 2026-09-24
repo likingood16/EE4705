@@ -18,7 +18,6 @@ from launch.substitutions import (
     PathJoinSubstitution,
 )
 from launch_ros.actions import Node
-from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -66,39 +65,15 @@ def generate_launch_description() -> LaunchDescription:
         "navigation2.launch.py",
     )
 
-    navigation_params = os.path.join(
-    get_package_share_directory("turtlebot3_navigation2"),
-    "param",
-    "humble",
-    "waffle_pi.yaml",
-)
-
-    # Gazebo's diff-drive plugin publishes odometry from the true world pose
-    # (odometry_source defaults to WORLD), so odom == Gazebo world frame. The
-    # saved map is the world shifted by (+2.00, +0.45) with no rotation (checked
-    # by aligning the map image with the wall geometry). A fixed map->odom
-    # transform therefore gives exact localisation; AMCL keeps running but no
-    # longer publishes map->odom, because its estimate drifted ~0.27 m / 10 deg
-    # and made the robot miss the 0.85 m doorway north of the start room.
-    #
-    # DWB ends its local plan at the first global-plan pose further than half
-    # the local costmap width from the robot. With the default 3 x 3 m window,
-    # the U-turn through the doorway north of the start room put that local
-    # goal behind the wall; GoalDist/GoalAlign score straight-line distance, so
-    # the robot turned to face the plain wall and stalled until the progress
-    # checker aborted. A 2 x 2 m window keeps the local goal on the near side
-    # of the wall. (forward_prune_distance would be the direct knob, but it is
-    # not in the TurtleBot3 YAML and RewrittenYaml cannot add new keys.)
-    navigation_overrides = {
-        "tf_broadcast": "False",
-        "local_costmap.local_costmap.ros__parameters.width": "2",
-        "local_costmap.local_costmap.ros__parameters.height": "2",
-    }
-
-    tuned_navigation_params = RewrittenYaml(
-        source_file=navigation_params,
-        param_rewrites=navigation_overrides,
-        convert_types=True,
+    # TurtleBot3's Nav2 parameters with the project's changes (fixed
+    # map->odom, 2 x 2 m local costmap, static-map-only global costmap); each
+    # change is explained at the top of the file.
+    navigation_params = PathJoinSubstitution(
+        [
+            project_root,
+            "config",
+            "nav2_waffle_pi.yaml",
+        ]
     )
 
     start_gazebo = IncludeLaunchDescription(
@@ -116,12 +91,14 @@ def generate_launch_description() -> LaunchDescription:
         PythonLaunchDescriptionSource(navigation_launch),
         launch_arguments={
             "map": map_file,
-            "params_file": tuned_navigation_params,
+            "params_file": navigation_params,
             "use_sim_time": "True",
             "autostart": "True",
         }.items(),
     )
 
+    # Exact localisation: odom == Gazebo world and map == world + (2.0, 0.45),
+    # so map->odom is fixed (AMCL no longer broadcasts it; see the Nav2 YAML).
     map_to_odom = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
