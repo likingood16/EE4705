@@ -324,6 +324,7 @@ def evaluate(arguments: argparse.Namespace) -> None:
                     reported_objects=response.text,
                     latency_s=f"{response.latency_s:.3f}",
                     cost_usd="" if response.cost_usd is None else response.cost_usd,
+                    notes=f"tokens in={response.input_tokens} out={response.output_tokens}",
                 )
                 print(f"  {response.latency_s:.2f} s")
             results.append(row)
@@ -357,8 +358,8 @@ def score(arguments: argparse.Namespace) -> None:
         row["correct_objects"] = "; ".join(correct)
         row["missed_objects"] = "; ".join(missed)
         row["hallucinated_objects"] = "; ".join(extra)
-        if not row["notes"].startswith("ERROR"):
-            row["notes"] = "Keyword-scored; verify hallucinations against the image"
+        if not row["notes"].startswith("ERROR") and "Keyword-scored" not in row["notes"]:
+            row["notes"] = f"{row['notes']}; Keyword-scored, verify hallucinations".lstrip("; ")
 
         stats = summary.setdefault(row["model"], {"trials": 0, "expected": 0, "correct": 0,
                                                   "extra": 0, "latency": 0.0})
