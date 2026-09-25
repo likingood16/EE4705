@@ -1,5 +1,7 @@
 # EE4705 Project 1.2 – AI-Bot in World Model
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#ee4705-project-12--ai-bot-in-world-model)
+
 This project implements an integrated human-robot interaction system using TurtleBot3 Waffle Pi, ROS2 Humble, Gazebo Classic, Nav2, RViz2, and Gemini-based language/vision processing.
 
 The final system supports:
@@ -23,6 +25,8 @@ The overall workflow is:
 
 ## 1. System Requirements
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#1-system-requirements)
+
 Tested environment:
 
 - Ubuntu 22.04
@@ -36,13 +40,13 @@ Tested environment:
 
 The repository is assumed to be located at:
 
-```bash
+```
 ~/EE4705
 ```
 
 Important final files:
 
-```text
+```
 EE4705/
 ├── config/
 │   └── room_waypoints.yaml
@@ -54,6 +58,9 @@ EE4705/
 └── ros2_ws/
     └── src/
         └── ee4705_perception/
+            ├── launch/
+            │   └── custom_house.launch.py
+            ├── setup.py
             └── ee4705_perception/
                 ├── terminal_chat.py
                 ├── goto_room.py
@@ -67,23 +74,26 @@ EE4705/
                 ├── approach_geometry.py
                 ├── approach_session.py
                 └── search_tracker.py
+
 ```
 
 ---
 
 ## 2. Build the ROS2 Workspace
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#2-build-the-ros2-workspace)
+
 Open an Ubuntu terminal.
 
 If using WSL:
 
-```powershell
+```
 wsl -d Ubuntu-22.04
 ```
 
 Then run:
 
-```bash
+```
 conda deactivate
 cd ~/EE4705/ros2_ws
 
@@ -94,38 +104,68 @@ source install/setup.bash
 export TURTLEBOT3_MODEL=waffle_pi
 ```
 
+Rebuild the package whenever `setup.py` or `launch/custom_house.launch.py` is changed so that ROS2 installs the latest launch file.
+
 ---
 
 ## 3. Launch the Custom Gazebo World
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#3-launch-the-custom-gazebo-world)
+
 ### Terminal 1 – Gazebo
 
-```bash
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#terminal-1--gazebo)
+
+```
 conda deactivate
+cd ~/EE4705/ros2_ws
+
 source /opt/ros/humble/setup.bash
+source install/setup.bash
 
 export TURTLEBOT3_MODEL=waffle_pi
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/humble/share/turtlebot3_gazebo/models
 
-ros2 launch gazebo_ros gazebo.launch.py \
-world:=$HOME/EE4705/worlds/house_with_objects.world
+ros2 launch ee4705_perception custom_house.launch.py
 ```
 
 Wait until Gazebo fully loads.
 
-The final custom world is:
+The custom launch file is:
 
-```text
+```
+ros2_ws/src/ee4705_perception/launch/custom_house.launch.py
+```
+
+This launch file loads the final custom world:
+
+```
 worlds/house_with_objects.world
 ```
+
+and preserves the normal TurtleBot3 simulation setup required for the robot TF tree, odometry, LiDAR and camera.
+
+Do **not** launch the custom world directly with `gazebo_ros gazebo.launch.py`, because that may result in an incomplete TurtleBot3 TF setup for Nav2.
+
+Optional TF check after Gazebo has loaded:
+
+```
+ros2 run tf2_ros tf2_echo odom base_link
+```
+
+A working setup should display repeated translation and rotation values rather than an `Invalid frame ID "odom"` error.
 
 ---
 
 ## 4. Launch Nav2 and RViz
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#4-launch-nav2-and-rviz)
+
 ### Terminal 2 – Nav2 + RViz
 
-```bash
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#terminal-2--nav2--rviz)
+
+```
 conda deactivate
 source /opt/ros/humble/setup.bash
 
@@ -140,26 +180,32 @@ Wait for Nav2 and RViz to fully load.
 
 The final map is:
 
-```text
+```
 maps/house_map_final.yaml
 maps/house_map_final.pgm
+
 ```
 
 The room waypoint table is:
 
-```text
+```
 config/room_waypoints.yaml
+
 ```
 
 ---
 
 ## 5. Move the Robot Away From the Starting Wall
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#5-move-the-robot-away-from-the-starting-wall)
+
 The TurtleBot3 may initially spawn close to a wall. Move it slightly into an open area before setting the AMCL pose.
 
 ### Terminal 3 – Keyboard Teleoperation
 
-```bash
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#terminal-3--keyboard-teleoperation)
+
+```
 conda deactivate
 source /opt/ros/humble/setup.bash
 
@@ -176,6 +222,8 @@ Do not move it too far from the initial area.
 
 ## 6. Set the Initial Pose in RViz
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#6-set-the-initial-pose-in-rviz)
+
 After moving the robot away from the wall:
 
 1. Return to RViz.
@@ -191,31 +239,36 @@ Accurate localization is important before autonomous navigation.
 
 ## 7. Optional Navigation Check
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#7-optional-navigation-check)
+
 Before launching the language interface, you can verify Nav2 by using **Nav2 Goal** in RViz.
 
 If the robot can navigate correctly to the selected position, localization and Nav2 are ready.
 
 The final system supports six numbered room waypoints stored in:
 
-```text
+```
 config/room_waypoints.yaml
+
 ```
 
 ---
 
 ## 8. Configure the Gemini API Key
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#8-configure-the-gemini-api-key)
+
 The integrated LLM/VLM system requires a valid Gemini API key.
 
 In the terminal that will run the chat interface:
 
-```bash
+```
 export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 ```
 
 To check that the key is set:
 
-```bash
+```
 echo $GEMINI_API_KEY
 ```
 
@@ -225,9 +278,13 @@ Do not commit API keys to GitHub.
 
 ## 9. Launch the Integrated Terminal Assistant
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#9-launch-the-integrated-terminal-assistant)
+
 ### Terminal 4 – Integrated LLM/VLM Chat
 
-```bash
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#terminal-4--integrated-llmvlm-chat)
+
+```
 conda deactivate
 cd ~/EE4705/ros2_ws
 
@@ -242,7 +299,7 @@ ros2 run ee4705_perception terminal_chat
 
 The interface should appear as:
 
-```text
+```
 ==========================================
    EE4705 TurtleBot3 Terminal Assistant
 ==========================================
@@ -251,24 +308,30 @@ Type a command and press ENTER.
 Type 'exit' to close the program.
 
 You:
+
 ```
 
 ---
 
 ## 10. Room Navigation
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#10-room-navigation)
+
 Example commands:
 
-```text
+```
 Go to Room 2
+
 ```
 
-```text
+```
 Could you head over to the fourth room?
+
 ```
 
-```text
+```
 Please check Room 1.
+
 ```
 
 The LLM converts the natural-language request into a structured room-navigation command and sends the corresponding waypoint to Nav2.
@@ -277,38 +340,47 @@ The LLM converts the natural-language request into a structured room-navigation 
 
 ## 11. Scene Description
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#11-scene-description)
+
 After reaching a room, ask:
 
-```text
+```
 What do you see?
+
 ```
 
 The robot captures its current camera frame and sends it to the VLM for scene description.
 
 Example:
 
-```text
+```
 You: What do you see?
 
 Robot: I can see a humanoid figure and a dark grey wheel near the wall.
+
 ```
 
 ---
 
 ## 12. Visual Follow-Up Questions
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#12-visual-follow-up-questions)
+
 The system supports follow-up visual questions such as:
 
-```text
+```
 Is there anything on the floor?
+
 ```
 
-```text
+```
 What colour is the object?
+
 ```
 
-```text
+```
 How many objects can you see?
+
 ```
 
 The terminal chat maintains conversation history so follow-up questions can refer to previous turns.
@@ -317,21 +389,25 @@ The terminal chat maintains conversation history so follow-up questions can refe
 
 ## 13. Object Search and Approach
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#13-object-search-and-approach)
+
 Example:
 
-```text
+```
 Approach the fire hydrant
+
 ```
 
 or:
 
-```text
+```
 Find the fire hydrant
+
 ```
 
 The object-approach workflow is:
 
-```text
+```
 Natural-language request
 → object grounding
 → target visible?
@@ -340,6 +416,7 @@ Natural-language request
 → MOVE_FORWARD
 → monitor LiDAR distance
 → stop safely near object
+
 ```
 
 If the object is not initially visible, the robot rotates in place and repeatedly checks the camera until the target becomes visible or the search fails/times out.
@@ -348,13 +425,16 @@ If the object is not initially visible, the robot rotates in place and repeatedl
 
 ## 14. Search, Alignment and Approach Behaviour
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#14-search-alignment-and-approach-behaviour)
+
 If the target is outside the camera field of view, the controller enters search mode.
 
 Example terminal output:
 
-```text
+```
 [Approach] Looking for fire hydrant...
 [Approach] found=False, action=search
+
 ```
 
 Once the target becomes visible, the controller uses the target bounding-box centre to decide whether to turn left, turn right, or move forward.
@@ -367,16 +447,19 @@ The LiDAR scanner is used for front-distance safety checks and stopping before c
 
 ## 15. Multi-Turn Interaction
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#15-multi-turn-interaction)
+
 Conversation history is retained.
 
 Example:
 
-```text
+```
 You: What do you see?
 
 Robot: I can see a humanoid figure and a dark grey wheel.
 
 You: Approach it.
+
 ```
 
 The LLM uses previous conversation context to resolve the referenced object when possible.
@@ -385,7 +468,9 @@ The LLM uses previous conversation context to resolve the referenced object when
 
 ## 16. Example Complete Interaction
 
-```text
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#16-example-complete-interaction)
+
+```
 You: Go to Room 1
 
 Robot: Navigating to Room 1...
@@ -402,27 +487,36 @@ Robot: Approaching the humanoid...
 [SEARCH / ALIGN / MOVE FORWARD]
 
 Robot: I have reached the humanoid.
+
 ```
 
 ---
 
 ## 17. Recommended Demo Sequence
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#17-recommended-demo-sequence)
+
 A suitable full-system demonstration is:
 
-```text
+```
 1. Go to Room 4
 2. What do you see?
 3. Approach the wheel/it
 4. Go to Room 1
 5. What do you see?
 6. Find the fire hydrant
+
 ```
+
 ---
 
 ## 18. Important Operating Notes
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#18-important-operating-notes)
+
 ### Do Not Use Keyboard Control During Autonomous Motion
+
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#do-not-use-keyboard-control-during-autonomous-motion)
 
 The following systems can command robot motion:
 
@@ -436,6 +530,8 @@ Use keyboard teleoperation only for initial positioning, setup and manual testin
 
 ### Localization Problems
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#localization-problems)
+
 If navigation behaves incorrectly:
 
 1. Compare the robot position in Gazebo and RViz.
@@ -446,6 +542,8 @@ If navigation behaves incorrectly:
 Poor localization can cause Nav2 failure even when the requested waypoint is correct.
 
 ### Nav2 Failure
+
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#nav2-failure)
 
 Navigation may fail because of:
 
@@ -459,6 +557,8 @@ Check localization before modifying the navigation code.
 
 ### Gazebo Physics Instability
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#gazebo-physics-instability)
+
 If the robot suddenly moves unrealistically or is launched by collision forces:
 
 1. Stop Gazebo.
@@ -468,11 +568,14 @@ If the robot suddenly moves unrealistically or is launched by collision forces:
 
 ### Gemini API Availability
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#gemini-api-availability)
+
 Gemini may occasionally return temporary service errors such as:
 
-```text
+```
 503 UNAVAILABLE
 This model is currently experiencing high demand
+
 ```
 
 Retry the command after a short delay.
@@ -481,15 +584,17 @@ Retry the command after a short delay.
 
 ## 19. Camera Check
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#19-camera-check)
+
 To verify that the camera topic is active:
 
-```bash
+```
 ros2 topic hz /camera/image_raw
 ```
 
 To view the onboard camera:
 
-```bash
+```
 ros2 run rqt_image_view rqt_image_view
 ```
 
@@ -497,9 +602,11 @@ ros2 run rqt_image_view rqt_image_view
 
 ## 20. LiDAR Check
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#20-lidar-check)
+
 To verify the LiDAR topic:
 
-```bash
+```
 ros2 topic hz /scan
 ```
 
@@ -509,10 +616,12 @@ The object-approach controller uses `/scan` for front-distance safety checks.
 
 ## 21. Final Launch Order
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#21-final-launch-order)
+
 Use this order for normal operation:
 
-```text
-1. Launch custom Gazebo world
+```
+1. Launch the custom Gazebo world using `ros2 launch ee4705_perception custom_house.launch.py`
 2. Launch Nav2 + RViz
 3. Launch keyboard teleoperation
 4. Move robot slightly away from the starting wall
@@ -521,36 +630,44 @@ Use this order for normal operation:
 7. Set Gemini API key
 8. Launch terminal_chat
 9. Enter natural-language commands
+
 ```
 
 ---
 
 ## 22. Shutdown
 
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#22-shutdown)
+
 Exit the terminal assistant using:
 
-```text
+```
 exit
+
 ```
 
 Stop ROS2 processes with:
 
-```text
+```
 Ctrl+C
+
 ```
 
 Recommended shutdown order:
 
-```text
+```
 1. Terminal Assistant
 2. Keyboard Teleoperation
 3. Nav2 / RViz
 4. Gazebo
+
 ```
 
 ---
 
 ## 23. Final System Summary
+
+[svg](https://github.com/likingood16/EE4705/edit/main/README.md#23-final-system-summary)
 
 The final integrated system supports:
 
@@ -569,11 +686,11 @@ The final integrated system supports:
 
 The complete workflow is:
 
-```text
+```
 Natural-Language Instruction
 → LLM Parsing
 → Navigation / Vision / Approach
 → Robot Execution
 → User Feedback
-```
 
+```
