@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - scene description
+# Contributors (from git history): Alexander Likin (1 commit)
 """Append VLM trial results using the project's evaluation CSV format."""
 
 from __future__ import annotations

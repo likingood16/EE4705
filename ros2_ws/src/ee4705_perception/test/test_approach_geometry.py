@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Marie (1 commit)
 import unittest
 
 from ee4705_perception.approach_geometry import (

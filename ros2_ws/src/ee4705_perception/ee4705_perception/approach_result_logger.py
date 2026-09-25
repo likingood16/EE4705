@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Marie (1 commit)
 """Save Task 4 trial results without overwriting earlier trials."""
 
 from __future__ import annotations

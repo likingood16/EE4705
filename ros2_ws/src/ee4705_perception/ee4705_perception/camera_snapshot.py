@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - scene description
+# Contributors (from git history): Alexander Likin (2 commits)
 """Capture one image from the TurtleBot3 camera."""
 
 from __future__ import annotations

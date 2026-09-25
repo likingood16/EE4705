@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - VLM client
+# Contributors (from git history): Alexander Likin (1 commit)
 """Transient provider errors are retried; other errors are raised at once."""
 
 import unittest

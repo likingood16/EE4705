@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 1 - simulation bringup
+# Contributors (from git history): Alexander Likin (1 commit)
 """Launch the EE4705 TurtleBot3 sensor system check."""
 
 from launch import LaunchDescription

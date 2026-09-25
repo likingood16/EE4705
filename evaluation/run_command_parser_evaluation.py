@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 2 - command parser
+# Contributors (from git history): Alexander Likin (2 commits)
 
 import csv
 import json

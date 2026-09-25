@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 1 - simulation bringup
+# Contributors (from git history): Alexander Likin (7 commits)
 """Launch the complete EE4705 Gazebo and Nav2 simulation."""
 
 from __future__ import annotations

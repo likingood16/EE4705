@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object search
+# Contributors (from git history): Marie (1 commit)
 """Track rotation and time limits for a Task 4 object search."""
 
 from __future__ import annotations

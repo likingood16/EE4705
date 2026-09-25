@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 1 - simulation bringup
+# Contributors (from git history): Alexander Likin (1 commit)
 """Forward /scan to the local costmap only once its transform is available.
 
 Nav2's obstacle layer passes scans through a tf2_ros MessageFilter. When a

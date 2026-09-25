@@ -83,7 +83,7 @@ Expected: 86 tests pass. The fake ROS tests need no extra pip dependencies.
 Review the code and commit only these paths:
 
 ```bash
-git add TASK4_INTEGRATION_GUIDE.md
+git add docs/task4_integration_guide.md
 git add ros2_ws/src/ee4705_perception/ee4705_perception/approach_runtime.py
 git add ros2_ws/src/ee4705_perception/ee4705_perception/approach_robot.py
 git add ros2_ws/src/ee4705_perception/test/test_approach_runtime.py

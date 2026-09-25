@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 2 - terminal chat
+# Contributors (from git history): Alexander Likin (8 commits), Charansagar Ramanujam (1 commit)
 """Multi-turn terminal chat: the robot's dialogue manager (Tasks 2 and 5).
 
 Every user turn is parsed by an LLM into one JSON command, which is then

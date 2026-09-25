@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - VLM comparison
+# Contributors (from git history): Alexander Likin (3 commits)
 """Task 3 VLM comparison: capture 10 scenes and compare Gemini with Qwen.
 
 Three steps, each resumable:

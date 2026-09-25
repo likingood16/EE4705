@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# EE4705 Project 1.2 | Task 1 - simulation bringup
+# Contributors (from git history): Alexander Likin (2 commits)
 
 # Start the complete EE4705 Gazebo, Nav2 and localization system.
 

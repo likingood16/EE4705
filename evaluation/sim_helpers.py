@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 5 - end-to-end trials
+# Contributors (from git history): Alexander Likin (2 commits)
 """Shared helpers for simulation experiments.
 
 Ground truth comes from Gazebo itself through the gazebo_ros_state world

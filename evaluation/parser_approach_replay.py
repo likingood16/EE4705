@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 5 - end-to-end trials
+# Contributors (from git history): Alexander Likin (1 commit)
 """Replay the end-to-end approach turns through the current command parser.
 
 In the end-to-end trials the parser refused some "move to the X" requests

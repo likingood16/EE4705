@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - VLM client
+# Contributors (from git history): Alexander Likin (1 commit)
 import os
 import unittest
 from unittest.mock import patch

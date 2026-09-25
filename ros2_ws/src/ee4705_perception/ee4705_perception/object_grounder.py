@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object grounding
+# Contributors (from git history): Alexander Likin (2 commits), Marie (1 commit)
 """Visual grounding for Task 4 language-directed object approach."""
 
 from __future__ import annotations

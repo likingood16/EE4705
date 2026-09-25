@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Alexander Likin (2 commits)
 """Bearing/range geometry, laser helpers and the step planner."""
 
 import math

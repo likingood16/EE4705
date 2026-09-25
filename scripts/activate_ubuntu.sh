@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# EE4705 Project 1.2 | Task 1 - simulation bringup
+# Contributors (from git history): Alexander Likin (5 commits)
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   echo "Run this script with: source scripts/activate_ubuntu.sh"

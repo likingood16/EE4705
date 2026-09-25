@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 2 - room navigation
+# Contributors (from git history): Alexander Likin (3 commits), Charansagar Ramanujam (2 commits)
 import sys
 import math
 import yaml

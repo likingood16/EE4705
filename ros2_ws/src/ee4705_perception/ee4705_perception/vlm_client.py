@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - VLM client
+# Contributors (from git history): Alexander Likin (5 commits)
 """Small provider interface for sending a saved image to a VLM."""
 
 from __future__ import annotations

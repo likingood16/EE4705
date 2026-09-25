@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 3 - scene description
+# Contributors (from git history): Alexander Likin (1 commit)
 import csv
 import tempfile
 import unittest

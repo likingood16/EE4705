@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Marie (2 commits), Alexander Likin (1 commit)
 """High-level approach decisions; ROS safety monitoring is added separately."""
 
 from __future__ import annotations

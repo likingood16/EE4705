@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Alexander Likin (1 commit)
 """Task 4.iii: object-approach trials in Gazebo (resumable).
 
 Each trial teleports the robot to a fixed start pose (Gazebo world frame),

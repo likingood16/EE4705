@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Alexander Likin (1 commit), Marie (1 commit)
 """Image geometry calculations for the Task 4 approach controller."""
 
 from __future__ import annotations

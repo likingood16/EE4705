@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - back away
+# Contributors (from git history): Alexander Likin (1 commit)
 """Reverse a short distance when something is close in front of the robot.
 
 After an object approach the robot stops ~0.4 m from the object, but the

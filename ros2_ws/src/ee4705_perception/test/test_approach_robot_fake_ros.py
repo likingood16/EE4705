@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object approach
+# Contributors (from git history): Alexander Likin (2 commits), Marie (1 commit)
 """Exercise the real adapter against a fake ROS transport, not Gazebo."""
 
 import contextlib

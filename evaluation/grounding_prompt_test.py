@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 4 - object grounding
+# Contributors (from git history): Alexander Likin (1 commit)
 """Compare grounding prompts on saved camera frames with known answers.
 
 The frames come from the first approach-trial run (evaluation/task4_evidence)
@@ -21,7 +23,7 @@ from ee4705_perception.object_grounder import GROUNDING_PROMPT, ObjectGrounder  
 from ee4705_perception.vlm_client import QwenVLMClient  # noqa: E402
 
 RESULTS = PROJECT_ROOT / "evaluation" / "grounding_prompt_test.csv"
-TRIALS = "evaluation/task4_evidence/trials"
+TRIALS = "evaluation/task4_evidence/trials/run1"
 SCENES = "evaluation/scenes/comparison"
 
 # The prompt used in the first approach-trial run.

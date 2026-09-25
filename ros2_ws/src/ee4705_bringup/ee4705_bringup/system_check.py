@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 1 - simulation bringup
+# Contributors (from git history): Alexander Likin (2 commits)
 """Verify that the simulated TurtleBot3 is publishing its essential sensors."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# EE4705 Project 1.2 | Task 5 - end-to-end trials
+# Contributors (from git history): Alexander Likin (1 commit)
 """Task 5.ii: 20 randomized end-to-end trials through the chat pipeline.
 
 Each trial is a two-turn conversation run through terminal_chat.handle_turn()
