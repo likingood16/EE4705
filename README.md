@@ -86,6 +86,96 @@ odometry check), `ros2 run ee4705_perception goto_room`, `camera_snapshot`,
 `vision_demo`, `approach_robot`. The demo walkthrough is in
 `docs/demo_script.md`.
 
+## Using the assistant
+
+Adapted from Charansagar's operating guide (Task 2).
+
+### Room navigation
+
+```text
+Go to Room 2
+Could you head over to the fourth room?
+Please check Room 1.
+```
+
+The parser turns the request into a `goto_room` command, and the robot sends
+that room's waypoint from `config/room_waypoints.yaml` to Nav2. It reports
+success or failure in the chat. Unknown rooms ("Go to Room 99") get a
+clarification instead of a goal.
+
+### Scene description and follow-up questions
+
+After arriving, or at any time:
+
+```text
+What do you see?
+Is there anything on the floor?
+What colour is the object?
+How many objects can you see?
+```
+
+The robot captures the current camera frame and sends it to the VLM. The chat
+keeps the conversation history, so follow-up questions can refer to earlier turns.
+
+### Object search and approach
+
+```text
+Approach the fire hydrant
+Find the car wheel
+Move to it            (refers to the object just described)
+```
+
+```text
+request -> object grounding -> target visible?
+             no  -> SEARCH (rotate in place and re-query; fail after a full turn)
+             yes -> ALIGN (bounding-box centre to image centre)
+                 -> MOVE_FORWARD while monitoring the laser front distance
+                 -> stop safely near the object and confirm in the chat
+```
+
+### Example session
+
+```text
+You:   Go to Room 1
+Robot: I have arrived in Room 1. I can see a humanoid figure near the wall.
+You:   Approach it.
+Robot: I am now next to the humanoid.
+```
+
+The recorded demo follows `docs/demo_script.md`. It covers two rooms, two
+approaches and one approach that starts with the object out of view.
+
+### Operating notes
+
+- **Don't drive with the keyboard during autonomous motion.** Teleop, Nav2 and
+  the approach controller all publish velocity commands.
+- **Localization looks wrong** (the robot in RViz doesn't match Gazebo): stop and
+  rerun `scripts/start_simulation.sh`, which resets the initial pose. Don't use
+  Gazebo's Reset World.
+- **Nav2 can't make progress**: check localization first. Other causes are a
+  blocked path, a narrow doorway or a local costmap obstacle.
+- **Robot flung by physics or behaving unrealistically**: restart the simulation script.
+- **VLM errors** (`503 UNAVAILABLE`, timeouts): the client retries. If Gemini is
+  overloaded, keep the default Qwen provider.
+
+### Sensor checks
+
+```bash
+ros2 topic hz /camera/image_raw                 # camera
+ros2 run rqt_image_view rqt_image_view          # view the camera
+ros2 topic hz /scan                             # laser (used for the approach safety stop)
+ros2 run ee4705_bringup system_check            # camera, laser and odometry in one check
+```
+
+### Manual launch (alternative)
+
+Instead of `start_simulation.sh`, the world can be started on its own with
+`ros2 launch ee4705_perception custom_house.launch.py`, followed by
+`turtlebot3_navigation2 navigation2.launch.py use_sim_time:=True
+map:=$HOME/EE4705/maps/house_map_final.yaml` and a 2D Pose Estimate in RViz.
+This path doesn't use the tuned Nav2 parameters in `config/nav2_waffle_pi.yaml`,
+so the evaluation results above were produced with `start_simulation.sh`.
+
 ## Tests
 
 The offline unit tests need no simulation and no API keys:
