@@ -35,7 +35,7 @@ class GotoRoom(Node):
         project_root = Path(
             os.environ.get(
                 'EE4705_ROOT',
-                Path(__file__).resolve().parents[4]
+                Path.home() / 'EE4705'
             )
         )
         yaml_path = project_root / 'config' / 'room_waypoints.yaml'

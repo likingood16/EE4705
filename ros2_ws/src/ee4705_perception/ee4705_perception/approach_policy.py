@@ -1,4 +1,4 @@
-"""High-level approach decisions; ROS safety monitoring is added separately."""
+"""High-level approach decisions for Task 4."""
 
 from __future__ import annotations
 
@@ -21,27 +21,78 @@ class ApproachAction(str, Enum):
 
 @dataclass(frozen=True)
 class ApproachConfig:
-    """Provisional thresholds to calibrate during simulation."""
+    """Thresholds used by the object-approach policy."""
 
     center_tolerance: float = 0.15
+
+    # Keep this for visual scale checking,
+    # but final success also requires LiDAR confirmation.
     close_height_fraction: float = 0.55
+
+    # Hard safety stop.
     minimum_front_distance_m: float = 0.35
 
+    # Desired stopping distance for a reached target.
+    target_reached_distance_m: float = 0.80
+
     def __post_init__(self):
+
         if not math.isfinite(self.center_tolerance):
-            raise ValueError("Center tolerance must be finite.")
+            raise ValueError(
+                "Center tolerance must be finite."
+            )
+
         if not 0 < self.center_tolerance < 1:
-            raise ValueError("Center tolerance must be between 0 and 1.")
+            raise ValueError(
+                "Center tolerance must be between 0 and 1."
+            )
 
-        if not math.isfinite(self.close_height_fraction):
-            raise ValueError("Close height fraction must be finite.")
-        if not 0 < self.close_height_fraction <= 1:
-            raise ValueError("Close height fraction must be in (0, 1].")
+        if not math.isfinite(
+            self.close_height_fraction
+        ):
+            raise ValueError(
+                "Close height fraction must be finite."
+            )
 
-        if not math.isfinite(self.minimum_front_distance_m):
-            raise ValueError("Minimum front distance must be finite.")
-        if self.minimum_front_distance_m <= 0:
-            raise ValueError("Minimum front distance must be positive.")
+        if not (
+            0
+            < self.close_height_fraction
+            <= 1
+        ):
+            raise ValueError(
+                "Close height fraction must be in (0, 1]."
+            )
+
+        if not math.isfinite(
+            self.minimum_front_distance_m
+        ):
+            raise ValueError(
+                "Minimum front distance must be finite."
+            )
+
+        if (
+            self.minimum_front_distance_m
+            <= 0
+        ):
+            raise ValueError(
+                "Minimum front distance must be positive."
+            )
+
+        if not math.isfinite(
+            self.target_reached_distance_m
+        ):
+            raise ValueError(
+                "Target reached distance must be finite."
+            )
+
+        if (
+            self.target_reached_distance_m
+            <= self.minimum_front_distance_m
+        ):
+            raise ValueError(
+                "Target reached distance must be greater "
+                "than the minimum safety distance."
+            )
 
 
 def decide_approach_action(
@@ -52,44 +103,140 @@ def decide_approach_action(
     front_distance_m: float | None,
     config: ApproachConfig = ApproachConfig(),
 ) -> ApproachAction:
-    """Choose an action from validated, fresh sensor measurements."""
+    """
+    Choose the next approach action.
 
-    # Missing, invalid, or stale scan data must never permit movement.
-    # The future ROS adapter must pass None when a scan is stale.
+    Logic:
+    - no fresh LiDAR -> stop
+    - obstacle too close -> stop
+    - target not visible -> search
+    - target off-centre -> rotate
+    - target centred and within target distance -> reached
+    - target centred but still far -> move forward
+    """
+
+    # ========================================================
+    # LIDAR SAFETY
+    # ========================================================
+
     if front_distance_m is None:
-        return ApproachAction.STOP_SENSOR_UNAVAILABLE
 
-    if not math.isfinite(front_distance_m) or front_distance_m < 0:
-        return ApproachAction.STOP_SENSOR_UNAVAILABLE
-
-    if front_distance_m <= config.minimum_front_distance_m:
-        return ApproachAction.STOP_OBSTACLE
-
-    if not target_found:
-        return ApproachAction.SEARCH
-
-    if horizontal_error is None or height_fraction is None:
-        raise ValueError(
-            "A visible target requires horizontal error and height fraction."
+        return (
+            ApproachAction
+            .STOP_SENSOR_UNAVAILABLE
         )
 
-    if not -1.0 <= horizontal_error <= 1.0:
-        raise ValueError("Horizontal error must be between -1 and 1.")
+    if (
+        not math.isfinite(
+            front_distance_m
+        )
+        or front_distance_m < 0
+    ):
 
-    if not 0.0 < height_fraction <= 1.0:
-        raise ValueError("Height fraction must be in (0, 1].")
+        return (
+            ApproachAction
+            .STOP_SENSOR_UNAVAILABLE
+        )
 
-    # Stop for a visually large target, but do not claim arrival off-centre.
-    if height_fraction >= config.close_height_fraction:
-        if abs(horizontal_error) <= config.center_tolerance:
-            # Provisional visual stopping criterion, not measured distance.
-            return ApproachAction.STOP_TARGET_REACHED
-        return ApproachAction.STOP_OBSTACLE
+    # Hard safety stop.
+    if (
+        front_distance_m
+        <= config.minimum_front_distance_m
+    ):
 
-    if horizontal_error < -config.center_tolerance:
-        return ApproachAction.TURN_LEFT
+        return (
+            ApproachAction
+            .STOP_OBSTACLE
+        )
 
-    if horizontal_error > config.center_tolerance:
-        return ApproachAction.TURN_RIGHT
+    # ========================================================
+    # TARGET NOT VISIBLE
+    # ========================================================
 
-    return ApproachAction.MOVE_FORWARD
+    if not target_found:
+
+        return (
+            ApproachAction
+            .SEARCH
+        )
+
+    # ========================================================
+    # VALIDATE CAMERA MEASUREMENTS
+    # ========================================================
+
+    if (
+        horizontal_error is None
+        or height_fraction is None
+    ):
+
+        raise ValueError(
+            "A visible target requires horizontal "
+            "error and height fraction."
+        )
+
+    if not (
+        -1.0
+        <= horizontal_error
+        <= 1.0
+    ):
+
+        raise ValueError(
+            "Horizontal error must be between -1 and 1."
+        )
+
+    if not (
+        0.0
+        < height_fraction
+        <= 1.0
+    ):
+
+        raise ValueError(
+            "Height fraction must be in (0, 1]."
+        )
+
+    # ========================================================
+    # ALIGN TARGET
+    # ========================================================
+
+    if (
+        horizontal_error
+        < -config.center_tolerance
+    ):
+
+        return (
+            ApproachAction
+            .TURN_LEFT
+        )
+
+    if (
+        horizontal_error
+        > config.center_tolerance
+    ):
+
+        return (
+            ApproachAction
+            .TURN_RIGHT
+        )
+
+    # ========================================================
+    # TARGET IS CENTRED
+    # ========================================================
+
+    # Use LiDAR as the final distance criterion.
+    # This prevents tall/large objects such as humanoids
+    # from being declared "reached" while still far away.
+    if (
+        front_distance_m
+        <= config.target_reached_distance_m
+    ):
+
+        return (
+            ApproachAction
+            .STOP_TARGET_REACHED
+        )
+
+    # Target is centred but still too far away.
+    return (
+        ApproachAction
+        .MOVE_FORWARD
+    )
