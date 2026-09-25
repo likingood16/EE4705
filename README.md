@@ -1,147 +1,579 @@
-# EE4705 Project 1.2 - AI Robot in a World Model
+# EE4705 Project 1.2 – AI-Bot in World Model
 
-This repository contains the group's shared implementation of a language-controlled
-TurtleBot3 robot. The final system will accept natural-language instructions,
-navigate between rooms, describe camera views, and approach requested objects.
+This project implements an integrated human-robot interaction system using TurtleBot3 Waffle Pi, ROS2 Humble, Gazebo Classic, Nav2, RViz2, and Gemini-based language/vision processing.
 
-## Project target
+The final system supports:
 
-```text
-User command
-  -> command manager
-  -> room navigation
-  -> scene understanding
-  -> object grounding and approach
-  -> robot reply
-```
+- Natural-language room navigation
+- Multi-turn terminal chat
+- Scene description using the robot camera
+- Visual follow-up questions
+- Language-directed object search
+- Object grounding
+- Camera-based alignment
+- Autonomous object approach
+- LiDAR-based safe stopping
+- Natural-language success/failure feedback
 
-The recommended platform from the project brief is:
+The overall workflow is:
+
+`Natural Language → LLM Parser → Navigation / Vision / Approach → Robot Execution → Feedback`
+
+---
+
+## 1. System Requirements
+
+Tested environment:
 
 - Ubuntu 22.04
 - ROS2 Humble
-- Gazebo
-- TurtleBot3 Waffle Pi (the model with a camera)
+- Gazebo Classic
+- TurtleBot3 Waffle Pi
 - Nav2
+- RViz2
+- Python 3.10
+- Google Gemini API
 
-## Repository layout
-
-| Path | Purpose |
-|---|---|
-| `ros2_ws/src/` | ROS2 packages and robot source code |
-| `config/` | Room waypoints and shared configuration |
-| `maps/` | Saved SLAM map files (`.yaml` and `.pgm`) |
-| `worlds/` | Modified Gazebo world and model files |
-| `evaluation/` | CSV templates and experiment results |
-| `docs/` | Assignment brief, research, setup notes, and diagrams |
-| `report/` | Group report source and final PDF |
-| `demo/` | Demo instructions and the submitted video link |
-| `scripts/` | Setup and convenience scripts |
-
-Member allocation is intentionally left open. Record the agreed allocation in
-`CONTRIBUTIONS.md` after the group decides.
-
-## Required deliverables
-
-- At least 4 numbered rooms and 3 distinct objects
-- At least 20 command-parser tests, including 5 paraphrases and 5 invalid requests
-- At least 2 VLMs compared on 10 scenes
-- At least 10 object-grounding and approach trials
-- At least 20 randomized end-to-end trials
-- One uncut 3-5 minute demo covering 2 rooms and 2 object approaches
-- One 8-15 page group report
-- Source code, README, map, world, waypoints, results, and demo included in submission
-
-Submission deadline: **27 September 2026**.
-
-## First-time setup
-
-Clone the repository inside Ubuntu:
+The repository is assumed to be located at:
 
 ```bash
-cd ~
-git clone https://github.com/likingood16/EE4705.git
-cd EE4705
+~/EE4705
 ```
 
-Install the shared dependencies once:
+Important final files:
 
-```bash
-bash scripts/install_dependencies_ubuntu.sh
+```text
+EE4705/
+├── config/
+│   └── room_waypoints.yaml
+├── maps/
+│   ├── house_map_final.yaml
+│   └── house_map_final.pgm
+├── worlds/
+│   └── house_with_objects.world
+└── ros2_ws/
+    └── src/
+        └── ee4705_perception/
+            └── ee4705_perception/
+                ├── terminal_chat.py
+                ├── goto_room.py
+                ├── camera_snapshot.py
+                ├── scene_describer.py
+                ├── vlm_client.py
+                ├── object_grounder.py
+                ├── approach_controller.py
+                ├── approach_policy.py
+                ├── approach_velocity.py
+                ├── approach_geometry.py
+                ├── approach_session.py
+                └── search_tracker.py
 ```
 
-For every new terminal, activate the project environment:
+---
 
-```bash
-source scripts/activate_ubuntu.sh
+## 2. Build the ROS2 Workspace
+
+Open an Ubuntu terminal.
+
+If using WSL:
+
+```powershell
+wsl -d Ubuntu-22.04
 ```
 
-Do not copy or commit `.venv`. GitHub stores the dependency recipe, and each
-member creates their own local environment from it. See `environment/README.md`.
-
-After ROS2 packages are added, build the workspace with:
+Then run:
 
 ```bash
+conda deactivate
 cd ~/EE4705/ros2_ws
-colcon build --symlink-install
+
+source /opt/ros/humble/setup.bash
+colcon build --packages-select ee4705_perception
 source install/setup.bash
+
+export TURTLEBOT3_MODEL=waffle_pi
 ```
 
-## Verify the simulator
+---
 
-Terminal 1:
+## 3. Launch the Custom Gazebo World
+
+### Terminal 1 – Gazebo
 
 ```bash
-ros2 launch turtlebot3_gazebo turtlebot3_house.launch.py
+conda deactivate
+source /opt/ros/humble/setup.bash
+
+export TURTLEBOT3_MODEL=waffle_pi
+export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/humble/share/turtlebot3_gazebo/models
+
+ros2 launch gazebo_ros gazebo.launch.py \
+world:=$HOME/EE4705/worlds/house_with_objects.world
 ```
 
-Terminal 2:
+Wait until Gazebo fully loads.
+
+The final custom world is:
+
+```text
+worlds/house_with_objects.world
+```
+
+---
+
+## 4. Launch Nav2 and RViz
+
+### Terminal 2 – Nav2 + RViz
 
 ```bash
+conda deactivate
+source /opt/ros/humble/setup.bash
+
+export TURTLEBOT3_MODEL=waffle_pi
+
+ros2 launch turtlebot3_navigation2 navigation2.launch.py \
+use_sim_time:=True \
+map:=$HOME/EE4705/maps/house_map_final.yaml
+```
+
+Wait for Nav2 and RViz to fully load.
+
+The final map is:
+
+```text
+maps/house_map_final.yaml
+maps/house_map_final.pgm
+```
+
+The room waypoint table is:
+
+```text
+config/room_waypoints.yaml
+```
+
+---
+
+## 5. Move the Robot Away From the Starting Wall
+
+The TurtleBot3 may initially spawn close to a wall. Move it slightly into an open area before setting the AMCL pose.
+
+### Terminal 3 – Keyboard Teleoperation
+
+```bash
+conda deactivate
+source /opt/ros/humble/setup.bash
+
+export TURTLEBOT3_MODEL=waffle_pi
+
 ros2 run turtlebot3_teleop teleop_keyboard
 ```
 
-Terminal 3:
+Use the keyboard controls to move the robot a short distance away from the wall.
+
+Do not move it too far from the initial area.
+
+---
+
+## 6. Set the Initial Pose in RViz
+
+After moving the robot away from the wall:
+
+1. Return to RViz.
+2. Click **2D Pose Estimate**.
+3. Click approximately where the robot is located on the map.
+4. Drag the arrow so that the heading matches the robot orientation in Gazebo.
+5. Wait for the AMCL estimate to settle.
+6. Confirm that the robot location in RViz approximately matches Gazebo.
+
+Accurate localization is important before autonomous navigation.
+
+---
+
+## 7. Optional Navigation Check
+
+Before launching the language interface, you can verify Nav2 by using **Nav2 Goal** in RViz.
+
+If the robot can navigate correctly to the selected position, localization and Nav2 are ready.
+
+The final system supports six numbered room waypoints stored in:
+
+```text
+config/room_waypoints.yaml
+```
+
+---
+
+## 8. Configure the Gemini API Key
+
+The integrated LLM/VLM system requires a valid Gemini API key.
+
+In the terminal that will run the chat interface:
+
+```bash
+export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+```
+
+To check that the key is set:
+
+```bash
+echo $GEMINI_API_KEY
+```
+
+Do not commit API keys to GitHub.
+
+---
+
+## 9. Launch the Integrated Terminal Assistant
+
+### Terminal 4 – Integrated LLM/VLM Chat
+
+```bash
+conda deactivate
+cd ~/EE4705/ros2_ws
+
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+
+export TURTLEBOT3_MODEL=waffle_pi
+export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+
+ros2 run ee4705_perception terminal_chat
+```
+
+The interface should appear as:
+
+```text
+==========================================
+   EE4705 TurtleBot3 Terminal Assistant
+==========================================
+
+Type a command and press ENTER.
+Type 'exit' to close the program.
+
+You:
+```
+
+---
+
+## 10. Room Navigation
+
+Example commands:
+
+```text
+Go to Room 2
+```
+
+```text
+Could you head over to the fourth room?
+```
+
+```text
+Please check Room 1.
+```
+
+The LLM converts the natural-language request into a structured room-navigation command and sends the corresponding waypoint to Nav2.
+
+---
+
+## 11. Scene Description
+
+After reaching a room, ask:
+
+```text
+What do you see?
+```
+
+The robot captures its current camera frame and sends it to the VLM for scene description.
+
+Example:
+
+```text
+You: What do you see?
+
+Robot: I can see a humanoid figure and a dark grey wheel near the wall.
+```
+
+---
+
+## 12. Visual Follow-Up Questions
+
+The system supports follow-up visual questions such as:
+
+```text
+Is there anything on the floor?
+```
+
+```text
+What colour is the object?
+```
+
+```text
+How many objects can you see?
+```
+
+The terminal chat maintains conversation history so follow-up questions can refer to previous turns.
+
+---
+
+## 13. Object Search and Approach
+
+Example:
+
+```text
+Approach the fire hydrant
+```
+
+or:
+
+```text
+Find the fire hydrant
+```
+
+The object-approach workflow is:
+
+```text
+Natural-language request
+→ object grounding
+→ target visible?
+    → No: SEARCH
+    → Yes: ALIGN
+→ MOVE_FORWARD
+→ monitor LiDAR distance
+→ stop safely near object
+```
+
+If the object is not initially visible, the robot rotates in place and repeatedly checks the camera until the target becomes visible or the search fails/times out.
+
+---
+
+## 14. Search, Alignment and Approach Behaviour
+
+If the target is outside the camera field of view, the controller enters search mode.
+
+Example terminal output:
+
+```text
+[Approach] Looking for fire hydrant...
+[Approach] found=False, action=search
+```
+
+Once the target becomes visible, the controller uses the target bounding-box centre to decide whether to turn left, turn right, or move forward.
+
+The controller uses separate motion durations for search, fine alignment and forward movement to reduce overshoot.
+
+The LiDAR scanner is used for front-distance safety checks and stopping before collision.
+
+---
+
+## 15. Multi-Turn Interaction
+
+Conversation history is retained.
+
+Example:
+
+```text
+You: What do you see?
+
+Robot: I can see a humanoid figure and a dark grey wheel.
+
+You: Approach it.
+```
+
+The LLM uses previous conversation context to resolve the referenced object when possible.
+
+---
+
+## 16. Example Complete Interaction
+
+```text
+You: Go to Room 1
+
+Robot: Navigating to Room 1...
+Robot: I have arrived in Room 1.
+
+You: What do you see?
+
+Robot: I can see a humanoid figure and several objects in the room.
+
+You: Approach the humanoid.
+
+Robot: Approaching the humanoid...
+
+[SEARCH / ALIGN / MOVE FORWARD]
+
+Robot: I have reached the humanoid.
+```
+
+---
+
+## 17. Recommended Demo Sequence
+
+A suitable full-system demonstration is:
+
+```text
+1. Go to Room 4
+2. What do you see?
+3. Approach the wheel/it
+4. Go to Room 1
+5. What do you see?
+6. Find the fire hydrant
+```
+---
+
+## 18. Important Operating Notes
+
+### Do Not Use Keyboard Control During Autonomous Motion
+
+The following systems can command robot motion:
+
+- keyboard teleoperation
+- Nav2
+- object-approach controller
+
+Do not press movement keys while Nav2 or the object-approach controller is active.
+
+Use keyboard teleoperation only for initial positioning, setup and manual testing.
+
+### Localization Problems
+
+If navigation behaves incorrectly:
+
+1. Compare the robot position in Gazebo and RViz.
+2. Re-run **2D Pose Estimate**.
+3. Check that the orientation is correct.
+4. Retry navigation.
+
+Poor localization can cause Nav2 failure even when the requested waypoint is correct.
+
+### Nav2 Failure
+
+Navigation may fail because of:
+
+- poor localization
+- blocked path
+- narrow doorway
+- local costmap obstacle
+- robot unable to make progress
+
+Check localization before modifying the navigation code.
+
+### Gazebo Physics Instability
+
+If the robot suddenly moves unrealistically or is launched by collision forces:
+
+1. Stop Gazebo.
+2. Restart the custom world.
+3. Restart Nav2.
+4. Set the initial pose again.
+
+### Gemini API Availability
+
+Gemini may occasionally return temporary service errors such as:
+
+```text
+503 UNAVAILABLE
+This model is currently experiencing high demand
+```
+
+Retry the command after a short delay.
+
+---
+
+## 19. Camera Check
+
+To verify that the camera topic is active:
 
 ```bash
 ros2 topic hz /camera/image_raw
+```
+
+To view the onboard camera:
+
+```bash
 ros2 run rqt_image_view rqt_image_view
 ```
 
-After Gazebo is running, verify all essential robot data with:
+---
+
+## 20. LiDAR Check
+
+To verify the LiDAR topic:
 
 ```bash
-cd ~/EE4705/ros2_ws
-colcon build --symlink-install
-source install/setup.bash
-ros2 run ee4705_bringup system_check
+ros2 topic hz /scan
 ```
 
-The check passes only when camera, laser, and odometry messages are received. See
-`docs/setup_notes/task1_smoke_test.md` for troubleshooting steps.
+The object-approach controller uses `/scan` for front-distance safety checks.
 
-## Group Git workflow
+---
 
-Do not develop directly on `main`. Create a short-lived branch for one feature:
+## 21. Final Launch Order
 
-```bash
-git switch main
-git pull origin main
-git switch -c feature/short-description
+Use this order for normal operation:
+
+```text
+1. Launch custom Gazebo world
+2. Launch Nav2 + RViz
+3. Launch keyboard teleoperation
+4. Move robot slightly away from the starting wall
+5. Set 2D Pose Estimate in RViz
+6. Confirm localization
+7. Set Gemini API key
+8. Launch terminal_chat
+9. Enter natural-language commands
 ```
 
-Save and publish the work:
+---
 
-```bash
-git add <files-you-changed>
-git commit -m "Describe the completed change"
-git push -u origin feature/short-description
+## 22. Shutdown
+
+Exit the terminal assistant using:
+
+```text
+exit
 ```
 
-Open a pull request on GitHub, ask another member to review it, and merge only
-after the relevant test works. See `CONTRIBUTING.md` for the complete workflow.
+Stop ROS2 processes with:
 
-## Security
+```text
+Ctrl+C
+```
 
-Never commit API keys, passwords, `.env` files, ROS build outputs, or large video
-files. Commit an unlisted video link in `demo/README.md` instead of the video when
-it exceeds GitHub's practical file-size limit.
+Recommended shutdown order:
+
+```text
+1. Terminal Assistant
+2. Keyboard Teleoperation
+3. Nav2 / RViz
+4. Gazebo
+```
+
+---
+
+## 23. Final System Summary
+
+The final integrated system supports:
+
+- Natural-language room navigation
+- Six room waypoints
+- Nav2 autonomous navigation
+- Multi-turn terminal interaction
+- VLM scene description
+- Visual follow-up questions
+- Object grounding
+- Search when a target is not initially visible
+- Camera-based alignment
+- Autonomous forward approach
+- LiDAR-based stopping
+- Natural-language success/failure feedback
+
+The complete workflow is:
+
+```text
+Natural-Language Instruction
+→ LLM Parsing
+→ Navigation / Vision / Approach
+→ Robot Execution
+→ User Feedback
+```
+
