@@ -1,88 +1,23 @@
-# Group collaboration guide
+# Contribution record
 
-## One-time Git setup
+| Member | Matriculation number | Main responsibilities | Main files | Tests performed |
+|---|---|---|---|---|
+| Charansagar Ramanujam | A0301658E | Task 2: SLAM map, room waypoints, room navigation, multi-turn chat and command parser; Task 4: integration of navigation, VLM and object approach in the chat; custom world launch; Video demo; README | `maps/`, `config/room_waypoints.yaml`, `goto_room.py`, `terminal_chat.py`, `approach_controller.py`, `launch/custom_house.launch.py` | 20-utterance command-parser evaluation (`evaluation/command_parser_trials.csv`) |
+| Alexander Likin | A0254488N | Task 3: VLM client, scene description, camera capture, result logging, Gemini vs Qwen comparison; Task 4 live validation, approach runtime and trial runs; Task 5 end-to-end trials; simulation setup scripts | `vlm_client.py`, `scene_describer.py`, `camera_snapshot.py`, `cli.py`, `result_logger.py`, `approach_robot.py`, `approach_runtime.py`, `back_away.py`, `evaluation/run_vlm_comparison.py`, `evaluation/run_approach_trials.py`, `evaluation/run_end_to_end_trials.py` | 10-scene VLM comparison (`evaluation/vlm_comparison.md`, `vlm_scene_trials.csv`); `test_perception.py`, `test_qwen_vlm.py`, `test_vlm_retries.py`, `test_approach_robot_fake_ros.py`, `test_approach_runtime.py`, `test_approach_step.py` |
+| Marie | | Task 4: object grounding, approach geometry, policy, velocity limits, search tracking, trial logging | `object_grounder.py`, `approach_geometry.py`, `approach_policy.py`, `approach_velocity.py`, `approach_session.py`, `search_tracker.py`, `approach_result_logger.py`, `docs/task4_integration_guide.md` | Offline approach pipeline and safety tests (`test_approach_*.py`, `test_object_grounder.py`, `test_search_tracker.py`) |
 
-Each member should configure Git on their own Ubuntu installation:
+Every source file under `ros2_ws/src`, `evaluation` and `scripts` starts with a
+two-line header naming its task and the contributors recorded in its git history
+(`git log --follow`). Commits authored `likingood16` are from Alexander Likin's account.
 
-```bash
-git config --global user.name "Your Name"
-git config --global user.email "your-github-email@example.com"
-git clone https://github.com/likingood16/EE4705.git
-cd EE4705
-```
+Commits authored 'Claude' were made by an AI coding assistant in Alexander's session (declared in the report).
 
-The repository owner must add the other members under GitHub repository
-**Settings -> Collaborators**. Each member uses their own GitHub account.
+## Shared work
 
-## Starting a piece of work
-
-Always update `main` before creating a branch:
-
-```bash
-git switch main
-git pull origin main
-git switch -c feature/short-description
-```
-
-Suggested branch names include:
-
-- `feature/room-waypoints`
-- `feature/command-parser`
-- `feature/scene-description`
-- `feature/object-approach`
-- `test/vlm-comparison`
-- `docs/literature-review`
-
-Branches describe the feature, not a permanent person. This allows the group to
-choose and change its allocation later.
-
-## Saving work
-
-Inspect the changes before committing:
-
-```bash
-git status
-git diff
-```
-
-Commit only relevant files:
-
-```bash
-git add path/to/file1 path/to/file2
-git commit -m "Implement room waypoint loading"
-git push -u origin feature/short-description
-```
-
-Do not use `git add .` until you have checked `git status`. It can accidentally
-include API keys, generated logs, datasets, or build files.
-
-## Pull requests
-
-1. Open a pull request from the feature branch into `main`.
-2. Explain what changed and how it was tested.
-3. Ask at least one group member to review it.
-4. Resolve conflicts together instead of overwriting another member's code.
-5. Merge only when the relevant test passes.
-6. Delete the remote feature branch after merging.
-
-After a pull request is merged, every member updates their copy:
-
-```bash
-git switch main
-git pull origin main
-```
-
-## Contribution evidence
-
-The brief requires contributions to be clear in both the report and source files.
-Keep `CONTRIBUTIONS.md` current and use Git commits and pull requests as evidence.
-For important source files, add a short module docstring identifying the main
-author and reviewers.
-
-## Files that must never be committed
-
-- API keys, tokens, passwords, or `.env` files
-- `ros2_ws/build/`, `ros2_ws/install/`, or `ros2_ws/log/`
-- Python virtual environments or cache files
-- Large ROS bag recordings or raw videos
-- Unlicensed third-party datasets or model weights
+| Area | Activity | Done by | Evidence / result |
+|---|---|---|---|
+| Task 1 | Simulation setup, system check, setup scripts | Alexander Likin; custom world launch by Charansagar Ramanujam | `ros2_ws/src/ee4705_bringup/`, `scripts/`, `launch/custom_house.launch.py` |
+| Tasks 2 and 4 | Integrating navigation, scene description and the approach controller into one chat | Charansagar Ramanujam | `terminal_chat.py`, `approach_controller.py`,`evaluation/command_parser_trials.csv`|
+| Task 4 | Approach runtime on Marie's modules, 12 approach trials (3 runs), grounding prompt test | Alexander Likin (on Marie's modules) | `evaluation/object_approach_trials.csv`, `evaluation/task4_evidence/`, `evaluation/grounding_prompt_test.csv` |
+| Task 5 | 20 randomized end-to-end trials, demo script | Alexander Likin | `evaluation/end_to_end_trials.csv`, `evaluation/e2e_evidence/`, `docs/demo_script.md` |
+| Report | Results summary | Alexander Likin | `docs/results_summary.md` |
