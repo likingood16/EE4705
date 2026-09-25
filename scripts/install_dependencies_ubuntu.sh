@@ -56,8 +56,10 @@ fi
 rosdep update
 
 python3 -m venv --system-site-packages "$PROJECT_ROOT/.venv"
+set +u
 # shellcheck disable=SC1091
 source "$PROJECT_ROOT/.venv/bin/activate"
+set -u
 python -m pip install --upgrade pip
 python -m pip install -r "$PROJECT_ROOT/requirements.txt"
 

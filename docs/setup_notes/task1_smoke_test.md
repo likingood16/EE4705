@@ -1,6 +1,7 @@
 # Task 1 simulator smoke test
 
-Use this test before starting navigation or VLM development.
+Use this test before starting navigation or VLM development. For the full Ubuntu
+command list, see `ubuntu_commands.md`.
 
 ## Terminal 1 - launch Gazebo
 
