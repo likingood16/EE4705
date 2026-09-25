@@ -15,6 +15,7 @@ the interactive chat.
 import csv
 import json
 import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -671,12 +672,71 @@ def run_approach_command(obj):
     return result.reply, stage
 
 
+# An explicit "move to <object>" must never be answered with a chat
+# refusal; room requests are left to the parser (goto_room).
+_APPROACH_PATTERNS = [
+    re.compile(
+        r"^(?:please )?(?:move|go|drive|head)(?: over)? (?:to|towards) "
+        r"(?:the )?(.+)$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^(?:approach|find|search for) (?:the )?(.+)$",
+        re.IGNORECASE,
+    ),
+]
+
+_ROOM_TARGET = re.compile(
+    r"^room\s*(?:\d+|one|two|three|four|five|six)$",
+    re.IGNORECASE,
+)
+
+
+def explicit_approach_target(user_text):
+    """Return the object named by an explicit approach request, else None."""
+
+    text = " ".join(user_text.split()).rstrip(".!?")
+
+    for pattern in _APPROACH_PATTERNS:
+
+        match = pattern.match(text)
+
+        if match:
+
+            target = match.group(1).strip()
+
+            if not target or _ROOM_TARGET.match(target):
+                return None
+
+            return target
+
+    return None
+
+
 def handle_turn(user_text):
     """Parse and execute one user turn; returns the full turn record."""
 
     command, latency, parse_stage = parse_command(
         user_text
     )
+
+    parser_override = False
+
+    if command.get("action") == "chat":
+
+        target = explicit_approach_target(user_text)
+
+        if target:
+
+            command = {"action": "approach", "object": target}
+            parser_override = True
+
+            # Keep the history consistent with what is actually executed.
+            if history and history[-1].get("role") == "assistant":
+                history[-1] = {
+                    "role": "assistant",
+                    "content": json.dumps(command),
+                }
 
     action = command.get(
         "action"
@@ -690,6 +750,7 @@ def handle_turn(user_text):
         "navigation": None,
         "vision": None,
         "approach": None,
+        "parser_override": parser_override,
     }
 
     navigation_success = None
