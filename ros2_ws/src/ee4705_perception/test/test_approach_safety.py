@@ -45,10 +45,10 @@ class ApproachSafetyTests(unittest.TestCase):
             ApproachAction.STOP_OBSTACLE,
         )
 
-    def test_large_off_centre_target_does_not_claim_arrival(self):
+    def test_close_off_centre_target_does_not_claim_arrival(self):
         self.assertEqual(
-            self.decide(1.0, error=0.7, height=0.6),
-            ApproachAction.STOP_OBSTACLE,
+            self.decide(0.7, error=0.7, height=0.6),
+            ApproachAction.TURN_RIGHT,
         )
 
     def test_invalid_configuration_is_rejected(self):
@@ -56,6 +56,7 @@ class ApproachSafetyTests(unittest.TestCase):
             {"center_tolerance": -0.1},
             {"close_height_fraction": 1.5},
             {"minimum_front_distance_m": 0.0},
+            {"target_reached_distance_m": 0.3},
         ):
             with self.subTest(options=options):
                 with self.assertRaises(ValueError):

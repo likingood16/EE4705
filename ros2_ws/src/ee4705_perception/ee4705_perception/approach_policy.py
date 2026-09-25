@@ -1,5 +1,5 @@
 # EE4705 Project 1.2 | Task 4 - object approach
-# Contributors (from git history): Marie (2 commits), Alexander Likin (1 commit)
+# Contributors (from git history): Marie (2 commits), Alexander Likin (1 commit), Charansagar Ramanujam (LiDAR arrival rule)
 """High-level approach decisions; ROS safety monitoring is added separately."""
 
 from __future__ import annotations
@@ -23,11 +23,15 @@ class ApproachAction(str, Enum):
 
 @dataclass(frozen=True)
 class ApproachConfig:
-    """Provisional thresholds to calibrate during simulation."""
+    """Thresholds for the reactive policy used by approach_controller."""
 
     center_tolerance: float = 0.15
+    # Kept for visual scale checks; arrival is decided by the laser.
     close_height_fraction: float = 0.55
+    # Hard safety stop.
     minimum_front_distance_m: float = 0.35
+    # A centred target is reached once the laser range drops to this.
+    target_reached_distance_m: float = 0.80
 
     def __post_init__(self):
         if not math.isfinite(self.center_tolerance):
@@ -44,6 +48,13 @@ class ApproachConfig:
             raise ValueError("Minimum front distance must be finite.")
         if self.minimum_front_distance_m <= 0:
             raise ValueError("Minimum front distance must be positive.")
+
+        if not math.isfinite(self.target_reached_distance_m):
+            raise ValueError("Target reached distance must be finite.")
+        if self.target_reached_distance_m <= self.minimum_front_distance_m:
+            raise ValueError(
+                "Target reached distance must exceed the minimum safety distance."
+            )
 
 
 def decide_approach_action(
@@ -81,18 +92,16 @@ def decide_approach_action(
     if not 0.0 < height_fraction <= 1.0:
         raise ValueError("Height fraction must be in (0, 1].")
 
-    # Stop for a visually large target, but do not claim arrival off-centre.
-    if height_fraction >= config.close_height_fraction:
-        if abs(horizontal_error) <= config.center_tolerance:
-            # Provisional visual stopping criterion, not measured distance.
-            return ApproachAction.STOP_TARGET_REACHED
-        return ApproachAction.STOP_OBSTACLE
-
     if horizontal_error < -config.center_tolerance:
         return ApproachAction.TURN_LEFT
 
     if horizontal_error > config.center_tolerance:
         return ApproachAction.TURN_RIGHT
+
+    # The laser, not the box size, decides arrival: tall objects such as the
+    # humanoid fill the frame while still far away.
+    if front_distance_m <= config.target_reached_distance_m:
+        return ApproachAction.STOP_TARGET_REACHED
 
     return ApproachAction.MOVE_FORWARD
 

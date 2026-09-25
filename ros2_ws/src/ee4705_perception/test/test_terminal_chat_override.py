@@ -83,6 +83,16 @@ class ParserOverrideTest(unittest.TestCase):
         self.assertIsNone(target("go to Room 6"))
         self.assertIsNone(target("what do you see?"))
 
+    def test_pronoun_is_left_to_the_parser(self):
+        target = terminal_chat.explicit_approach_target
+        self.assertIsNone(target("Approach it"))
+        self.assertIsNone(target("move to that one"))
+
+        turn, approach = self.run_turn("Approach it", CHAT_REPLY)
+
+        approach.assert_not_called()
+        self.assertFalse(turn["parser_override"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -59,15 +59,17 @@ class ApproachPipelineTests(unittest.TestCase):
             ApproachAction.MOVE_FORWARD,
             ApproachAction.STOP_TARGET_REACHED,
         ]
+        # The laser range falls below the arrival distance on the last step.
+        front_distances = [2.0, 2.0, 2.0, 0.7]
         requests = []
 
-        for expected in expected_actions:
+        for expected, distance in zip(expected_actions, front_distances):
             grounding = grounder.locate("unused.jpg", "cup")
             decision = evaluate_grounding(
                 grounding,
                 image_width=640,
                 image_height=480,
-                front_distance_m=2.0,
+                front_distance_m=distance,
             )
 
             self.assertEqual(decision.action, expected)

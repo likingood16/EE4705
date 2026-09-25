@@ -51,12 +51,23 @@ class ApproachPolicyTests(unittest.TestCase):
 
         self.assertEqual(action, ApproachAction.MOVE_FORWARD)
 
-    def test_large_target_stops_as_reached(self):
+    def test_large_but_distant_target_keeps_moving(self):
+        # A tall object can fill the frame while the laser still reads 1 m.
         action = decide_approach_action(
             target_found=True,
             horizontal_error=0.0,
             height_fraction=0.6,
             front_distance_m=1.0,
+        )
+
+        self.assertEqual(action, ApproachAction.MOVE_FORWARD)
+
+    def test_centred_target_within_laser_range_is_reached(self):
+        action = decide_approach_action(
+            target_found=True,
+            horizontal_error=0.0,
+            height_fraction=0.3,
+            front_distance_m=0.7,
         )
 
         self.assertEqual(action, ApproachAction.STOP_TARGET_REACHED)

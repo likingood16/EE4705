@@ -244,6 +244,16 @@ objects are often described differently (a mannequin may have been called
 because you think the object is not there, and never treat an object in
 the house as a part of the robot.
 
+Pronoun resolution for object approach (from Charansagar's parser):
+When the user says "it", "that", "that object" or "this object", use the
+conversation history and the most recent visual description to resolve it
+to a concrete object name.
+Robot previously described: "I can see a white humanoid near the wall."
+User: "Approach it"
+Correct output: {"action": "approach", "object": "humanoid"}
+Never output {"action": "approach", "object": "it"}.
+If more than one object could be meant, use a chat action to ask which one.
+
 5. Stop:
 {"action": "stop"}
 
@@ -686,6 +696,11 @@ _APPROACH_PATTERNS = [
     ),
 ]
 
+# A pronoun is not an object name: leave its resolution (or a clarification
+# question) to the parser instead of searching for "it".
+_PRONOUN_TARGETS = {"it", "that", "this", "them", "that object", "this object",
+                    "that one", "this one"}
+
 _ROOM_TARGET = re.compile(
     r"^room\s*(?:\d+|one|two|three|four|five|six)$",
     re.IGNORECASE,
@@ -705,7 +720,8 @@ def explicit_approach_target(user_text):
 
             target = match.group(1).strip()
 
-            if not target or _ROOM_TARGET.match(target):
+            if (not target or _ROOM_TARGET.match(target)
+                    or target.lower() in _PRONOUN_TARGETS):
                 return None
 
             return target

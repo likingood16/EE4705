@@ -22,9 +22,9 @@ class VelocityRequest:
 class VelocityConfig:
     """Conservative initial speeds to verify in simulation."""
 
-    forward_speed_mps: float = 0.08
-    turn_speed_radps: float = 0.25
-    search_speed_radps: float = 0.20
+    forward_speed_mps: float = 0.1
+    turn_speed_radps: float = 0.35
+    search_speed_radps: float = 0.30
 
     def __post_init__(self):
         # Hard ceilings for this initial project controller.
