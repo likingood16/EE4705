@@ -17,7 +17,7 @@ Commits authored 'Claude' were made by an AI coding assistant in Alexander's ses
 | Area | Activity | Done by | Evidence / result |
 |---|---|---|---|
 | Task 1 | Simulation setup, system check, setup scripts | Alexander Likin; custom world launch by Charansagar Ramanujam | `ros2_ws/src/ee4705_bringup/`, `scripts/`, `launch/custom_house.launch.py` |
-| Tasks 2 and 4 | Integrating navigation, scene description and the approach controller into one chat | Charansagar Ramanujam | `terminal_chat.py`, `approach_controller.py` |
+| Tasks 2 and 4 | Integrating navigation, scene description and the approach controller into one chat | Charansagar Ramanujam | `terminal_chat.py`, `approach_controller.py`,`evaluation/command_parser_trials.csv`|
 | Task 4 | Approach runtime on Marie's modules, 12 approach trials (3 runs), grounding prompt test | Alexander Likin (on Marie's modules) | `evaluation/object_approach_trials.csv`, `evaluation/task4_evidence/`, `evaluation/grounding_prompt_test.csv` |
 | Task 5 | 20 randomized end-to-end trials, demo script | Alexander Likin | `evaluation/end_to_end_trials.csv`, `evaluation/e2e_evidence/`, `docs/demo_script.md` |
 | Report | Results summary | Alexander Likin | `docs/results_summary.md` |
