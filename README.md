@@ -580,6 +580,8 @@ This model is currently experiencing high demand
 
 Retry the command after a short delay.
 
+### Always check if the simulation is playing as it can sometimes turn off**
+
 ---
 
 ## 19. Camera Check
