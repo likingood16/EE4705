@@ -4,3 +4,7 @@ Describe only objects that are clearly visible in the image.
 Mention useful spatial relationships, colours, and approximate counts.
 Do not guess or invent hidden objects. Answer in two or three concise sentences.",,A red fire hydrant is visible on the far left. A brown brick wall stands near the center. Smooth wooden wall panels dominate the middle and right sections of the view.,,,,1.1711,,Needs manual scoring
 gemini-scene-001-floor-question,scene-001,evaluation/scenes/current_camera.jpg,gemini-3.5-flash-lite,"Is there anything on the floor? If it is unclear, say so.",,"Based on the image, the floor appears to be empty and clear of any objects.",,,,1.2331,,Needs manual scoring
+scene-001-gemini,scene-001,evaluation/scenes/scene-001.jpg,gemini-3.5-flash-lite,"You are the eyes of an indoor mobile robot.
+Describe only objects that are clearly visible in the image.
+Mention useful spatial relationships, colours, and approximate counts.
+Do not guess or invent hidden objects. Answer in two or three concise sentences.",,"A red fire hydrant is visible on the left side, positioned near a wooden partition. A brick-patterned partition stands centrally, flanked by large wooden panel walls. The scene features light grey flooring.",,,,3.5846,,Needs manual scoring
