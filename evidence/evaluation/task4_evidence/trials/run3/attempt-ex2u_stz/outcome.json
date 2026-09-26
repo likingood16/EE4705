@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 4,
+  "elapsed_s": 26.943395283997233,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": true,
+  "target": "fire hydrant",
+  "initially_visible": true,
+  "final_range_m": 0.5444443225860596,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run3/attempt-ex2u_stz",
+  "input_tokens": 2652,
+  "output_tokens": 143
+}

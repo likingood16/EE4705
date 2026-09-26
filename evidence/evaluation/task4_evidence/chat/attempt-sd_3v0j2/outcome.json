@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 8,
+  "elapsed_s": 29.246985473000677,
+  "search_rotation_deg": 358.7441506533153,
+  "visual_candidate": false,
+  "target": "human figure",
+  "initially_visible": false,
+  "final_range_m": null,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/chat/attempt-sd_3v0j2",
+  "input_tokens": 5296,
+  "output_tokens": 144
+}

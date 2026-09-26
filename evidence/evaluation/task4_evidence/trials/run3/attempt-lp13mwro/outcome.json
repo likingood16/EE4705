@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 9,
+  "elapsed_s": 41.95863540799837,
+  "search_rotation_deg": 225.0,
+  "visual_candidate": true,
+  "target": "car wheel",
+  "initially_visible": false,
+  "final_range_m": 0.5651668310165405,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run3/attempt-lp13mwro",
+  "input_tokens": 5958,
+  "output_tokens": 229
+}

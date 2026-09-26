@@ -1,0 +1,13 @@
+{
+  "reason": "obstacle_during_turn",
+  "api_calls": 6,
+  "elapsed_s": 22.34059889800119,
+  "search_rotation_deg": 180.0,
+  "visual_candidate": false,
+  "target": "cinder block",
+  "initially_visible": false,
+  "final_range_m": 1.7550058364868164,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/attempt-yk7onlp1",
+  "input_tokens": 2946,
+  "output_tokens": 150
+}

@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "grey block",
+    "label": "grey block",
+    "bbox": [
+      440.0,
+      452.0,
+      561.0,
+      527.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.2526489380034036,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"grey block\", \"bbox\": [440, 452, 561, 527]}",
+    "input_tokens": 662,
+    "output_tokens": 36,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": 6.120586758179476,
+    "y": -1.9159501502758942,
+    "yaw": -1.4686164278057507
+  },
+  "bbox_pixels": [
+    281.6,
+    216.96,
+    359.04,
+    252.96
+  ],
+  "bearing_deg": -0.03456302774170779,
+  "laser_range_m": 1.341080665588379,
+  "floor_range_m": 4.355926188633032,
+  "target_range_m": 1.341080665588379,
+  "range_source": "laser",
+  "step": {
+    "kind": "advance",
+    "turn_deg": 0.0,
+    "forward_m": 0.7910806655883789
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 11,
+  "elapsed_s": 55.66399874799754,
+  "search_rotation_deg": 358.74606537922847,
+  "visual_candidate": false,
+  "target": "person",
+  "initially_visible": true,
+  "final_range_m": 0.9120814800262451,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run3/attempt-ktf2tc62",
+  "input_tokens": 7271,
+  "output_tokens": 235
+}

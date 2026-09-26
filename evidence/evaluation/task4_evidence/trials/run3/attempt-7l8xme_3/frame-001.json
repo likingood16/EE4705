@@ -1,0 +1,27 @@
+{
+  "grounding": {
+    "found": false,
+    "target": "cinder block",
+    "label": "cinder block",
+    "bbox": null,
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.0091782750023413,
+    "cost_usd": null,
+    "raw_text": "{\"found\": false, \"label\": \"cinder block\", \"bbox\": null}",
+    "input_tokens": 663,
+    "output_tokens": 19,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": 5.790955830079178,
+    "y": -2.601022781761594,
+    "yaw": 2.622316402855308
+  },
+  "step": {
+    "kind": "search",
+    "turn_deg": 45.0,
+    "forward_m": 0.0
+  }
+}

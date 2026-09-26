@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 3,
+  "elapsed_s": 23.64365756099869,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": true,
+  "target": "car wheel",
+  "initially_visible": true,
+  "final_range_m": 0.5777953863143921,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/preflight/attempt-b4osireg",
+  "input_tokens": 1470,
+  "output_tokens": 106
+}

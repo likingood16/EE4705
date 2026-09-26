@@ -1,0 +1,27 @@
+{
+  "grounding": {
+    "found": false,
+    "target": "car wheel",
+    "label": "car wheel",
+    "bbox": null,
+    "model": "qwen3-vl-plus",
+    "latency_s": 0.7380041110009188,
+    "cost_usd": null,
+    "raw_text": "{\"found\": false, \"label\": \"car wheel\", \"bbox\": null}",
+    "input_tokens": 662,
+    "output_tokens": 18,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": 5.120316477782074,
+    "y": 2.308637468758893,
+    "yaw": 2.098716544328191
+  },
+  "step": {
+    "kind": "search",
+    "turn_deg": 45.0,
+    "forward_m": 0.0
+  }
+}

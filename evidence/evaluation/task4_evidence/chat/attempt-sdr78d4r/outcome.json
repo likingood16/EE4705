@@ -1,0 +1,13 @@
+{
+  "reason": "vlm_timeout",
+  "api_calls": 4,
+  "elapsed_s": 59.57465616099944,
+  "search_rotation_deg": 0.0,
+  "visual_candidate": false,
+  "target": "red fire hydrant",
+  "initially_visible": true,
+  "final_range_m": 2.633297920227051,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/chat/attempt-sdr78d4r",
+  "input_tokens": 1992,
+  "output_tokens": 114
+}

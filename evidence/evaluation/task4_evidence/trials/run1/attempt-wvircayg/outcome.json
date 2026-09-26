@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 9,
+  "elapsed_s": 38.352736986998934,
+  "search_rotation_deg": 358.7482120609505,
+  "visual_candidate": false,
+  "target": "person",
+  "initially_visible": true,
+  "final_range_m": 3.296030282974243,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/attempt-wvircayg",
+  "input_tokens": 4401,
+  "output_tokens": 169
+}

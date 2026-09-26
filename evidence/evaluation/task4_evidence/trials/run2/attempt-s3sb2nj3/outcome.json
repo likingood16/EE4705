@@ -1,0 +1,13 @@
+{
+  "reason": "arrived",
+  "api_calls": 8,
+  "elapsed_s": 39.186951348998264,
+  "search_rotation_deg": 180.0,
+  "visual_candidate": true,
+  "target": "fire hydrant",
+  "initially_visible": false,
+  "final_range_m": 0.52519291639328,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/run2/attempt-s3sb2nj3",
+  "input_tokens": 5304,
+  "output_tokens": 220
+}

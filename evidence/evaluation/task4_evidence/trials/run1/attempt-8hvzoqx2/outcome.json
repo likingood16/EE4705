@@ -1,0 +1,13 @@
+{
+  "reason": "sensor_missing_invalid_or_stale",
+  "api_calls": 2,
+  "elapsed_s": 6.327664802000072,
+  "search_rotation_deg": 90.0,
+  "visual_candidate": false,
+  "target": "car wheel",
+  "initially_visible": false,
+  "final_range_m": null,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/attempt-8hvzoqx2",
+  "input_tokens": 980,
+  "output_tokens": 36
+}

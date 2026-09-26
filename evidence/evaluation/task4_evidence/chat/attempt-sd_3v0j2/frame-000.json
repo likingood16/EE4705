@@ -1,0 +1,27 @@
+{
+  "grounding": {
+    "found": false,
+    "target": "human figure",
+    "label": "human figure",
+    "bbox": null,
+    "model": "qwen3-vl-plus",
+    "latency_s": 0.9531266889971448,
+    "cost_usd": null,
+    "raw_text": "{\"found\": false, \"label\": \"human figure\", \"bbox\": null}",
+    "input_tokens": 662,
+    "output_tokens": 18,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": -6.467360512308098,
+    "y": -0.9674114473156629,
+    "yaw": -1.7754189887006935
+  },
+  "step": {
+    "kind": "search",
+    "turn_deg": 45.0,
+    "forward_m": 0.0
+  }
+}

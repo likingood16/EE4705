@@ -1,0 +1,13 @@
+{
+  "reason": "object_not_found_search_limit",
+  "api_calls": 8,
+  "elapsed_s": 28.94696886899692,
+  "search_rotation_deg": 358.74428404600377,
+  "visual_candidate": false,
+  "target": "person",
+  "initially_visible": false,
+  "final_range_m": null,
+  "evidence_dir": "/home/alex/EE4705/evaluation/task4_evidence/trials/attempt-9pede4mm",
+  "input_tokens": 3912,
+  "output_tokens": 136
+}

@@ -1,0 +1,43 @@
+{
+  "grounding": {
+    "found": true,
+    "target": "fire hydrant",
+    "label": "fire hydrant",
+    "bbox": [
+      392.0,
+      0.0,
+      681.0,
+      594.0
+    ],
+    "model": "qwen3-vl-plus",
+    "latency_s": 1.139624711999204,
+    "cost_usd": null,
+    "raw_text": "{\"found\": true, \"label\": \"fire hydrant\", \"bbox\": [392, 0, 681, 594]}",
+    "input_tokens": 663,
+    "output_tokens": 35,
+    "retries": 0
+  },
+  "image_width": 640,
+  "image_height": 480,
+  "odom_pose": {
+    "x": -5.467674367847434,
+    "y": 2.788038601141856,
+    "yaw": 2.634722428317807
+  },
+  "bbox_pixels": [
+    250.88,
+    0.0,
+    435.84000000000003,
+    285.12
+  ],
+  "bearing_deg": -2.5214722878036646,
+  "laser_range_m": 1.1471238136291504,
+  "floor_range_m": 1.350836023319401,
+  "target_range_m": 1.1471238136291504,
+  "range_source": "laser",
+  "step": {
+    "kind": "advance",
+    "turn_deg": 0.0,
+    "forward_m": 0.5971238136291503
+  }
+}

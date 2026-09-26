@@ -1,0 +1,11 @@
+scene_id,image_path,room,heading_deg,expected_objects
+scene-001,evaluation/scenes/comparison/scene-001.jpg,room1,-81,human figure; bookshelf
+scene-002,evaluation/scenes/comparison/scene-002.jpg,room2,165,fire hydrant
+scene-003,evaluation/scenes/comparison/scene-003.jpg,room3,-69,trash can
+scene-004,evaluation/scenes/comparison/scene-004.jpg,room4,-14,car wheel
+scene-005,evaluation/scenes/comparison/scene-005.jpg,room5,-94,human figure
+scene-006,evaluation/scenes/comparison/scene-006.jpg,room6,-77,cinder block; table
+scene-007,evaluation/scenes/comparison/scene-007.jpg,room1,99,bookshelf
+scene-008,evaluation/scenes/comparison/scene-008.jpg,room2,-15,
+scene-009,evaluation/scenes/comparison/scene-009.jpg,room3,111,
+scene-010,evaluation/scenes/comparison/scene-010.jpg,room4,166,
